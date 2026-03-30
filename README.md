@@ -147,6 +147,7 @@ This project is structured to ship cleanly in public:
 - GitHub Pages site for public docs and install instructions
 
 See [PUBLISHING.md](PUBLISHING.md) for the release process and registry guidance.
+Use [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md) for the full release, Figma submission, and smoke-test flow.
 
 ## Install Experience
 
