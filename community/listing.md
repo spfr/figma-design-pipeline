@@ -25,7 +25,7 @@ This plugin is designed for teams that want a local, inspectable workflow instea
 2. Install the MCP package locally:
 
 ```bash
-npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
 3. Set your `FIGMA_ACCESS_TOKEN`

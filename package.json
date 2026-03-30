@@ -1,5 +1,5 @@
 {
-  "name": "@spfr/figma-design-pipeline",
+  "name": "@spicefactory/figma-design-pipeline",
   "version": "0.5.0",
   "description": "Open-source MCP pipeline for Figma: inspect designs, apply safe mutations, sync tokens, and generate code from Claude, Codex, Gemini, and Figma desktop",
   "keywords": [
@@ -22,7 +22,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/spfr/figma-design-pipeline.git"
+    "url": "git+https://github.com/spfr/figma-design-pipeline.git"
   },
   "author": "SPFR",
   "publishConfig": {
@@ -37,11 +37,11 @@
     "path-to-regexp": "^8.4.0"
   },
   "type": "module",
-  "bin": {
-    "spfr-figma-design-pipeline": "./dist/index.js",
-    "spfr-figma-design-pipeline-install": "./scripts/install.mjs"
+  "directories": {
+    "bin": "bin"
   },
   "files": [
+    "bin",
     "dist/index.js",
     "dist/plugin",
     "dist/figma-design-pipeline.mcpb",

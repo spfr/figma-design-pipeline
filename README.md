@@ -75,7 +75,7 @@ npm run install:clients
 Published package:
 
 ```bash
-npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
 That command:
@@ -150,7 +150,7 @@ The intended user flow is:
 2. Run the one-line local installer:
 
 ```bash
-npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
 3. Set `FIGMA_ACCESS_TOKEN`

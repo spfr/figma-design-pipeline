@@ -45,13 +45,13 @@ npm run build:desktop
 Recommended public install command after publish:
 
 ```bash
-npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
 Temporary fallback while npm is unavailable:
 
 ```bash
-npx -y -p https://github.com/spfr/figma-design-pipeline/releases/download/figma-design-pipeline-v0.5.0/spfr-figma-design-pipeline-0.5.0.tgz spfr-figma-design-pipeline-install --client all
+npx -y -p https://github.com/spfr/figma-design-pipeline/releases/download/figma-design-pipeline-v0.5.0/spicefactory-figma-design-pipeline-0.5.0.tgz spfr-figma-design-pipeline-install --client all
 ```
 
 Suggested release trigger:
