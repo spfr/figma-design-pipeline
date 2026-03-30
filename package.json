@@ -1,6 +1,6 @@
 {
   "name": "@spicefactory/figma-design-pipeline",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "description": "Open-source MCP pipeline for Figma: inspect designs, apply safe mutations, sync tokens, and generate code from Claude, Codex, Gemini, and Figma desktop",
   "keywords": [
     "figma",
