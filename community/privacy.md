@@ -10,8 +10,8 @@ SPFR Figma Design Pipeline runs locally on the user's machine.
 
 ## Data collection
 
-- The plugin does not require a hosted backend.
-- The plugin is not designed to send file data to SPFR-controlled cloud infrastructure.
+- The workflow runs locally on the user's machine.
+- The plugin is not designed to send file data to a hosted SPFR service.
 - Any external data handling depends on the AI client and local environment chosen by the user.
 
 ## User responsibility

@@ -116,7 +116,7 @@ Recommended listing language:
 - This plugin is the **Figma-side executor** for SPFR Figma Design Pipeline.
 - Read-only REST-based inspection and planning work without the plugin.
 - Mutations and local style sync require the plugin plus the local MCP server.
-- The plugin connects only to a local bridge on `127.0.0.1` and does not require a hosted backend.
+- The plugin connects only to a local bridge on `127.0.0.1` and the workflow runs locally.
 
 ### Publish Checklist
 

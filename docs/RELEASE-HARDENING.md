@@ -26,7 +26,7 @@ Use this checklist before making the repository public or cutting a release.
 
 - Confirm the manifest only requests the local network access required for the bridge.
 - Confirm plugin listing copy explains that write workflows depend on a local MCP bridge.
-- Confirm the plugin does not imply a hosted backend or cloud data relay.
+- Confirm the plugin clearly states that the workflow runs locally and does not imply any cloud relay.
 
 ## Docs Review
 

@@ -4,7 +4,7 @@ Install the Figma-side executor for SPFR Figma Design Pipeline.
 
 Use it to apply safe, structured changes to Figma files from local AI tools such as Claude Code, Codex, Gemini CLI, and Claude Desktop.
 
-This plugin is designed for teams that want a local, inspectable workflow instead of a hosted design automation service.
+This plugin is designed for teams that want a local, inspectable workflow.
 
 ## What it does
 
@@ -33,4 +33,4 @@ npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install
 
 ## Local bridge note
 
-This plugin connects only to a local MCP bridge running on `127.0.0.1` on the user's own machine. It does not connect to a hosted SPFR backend.
+This plugin connects only to a local MCP bridge running on `127.0.0.1` on the user's own machine. The workflow runs locally.
