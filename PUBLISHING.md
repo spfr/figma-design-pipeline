@@ -15,6 +15,7 @@ Why:
 - public CLI discoverability is much better on npm
 - trusted publishing with GitHub Actions is officially supported by npm
 - GitHub Packages is better as an internal mirror than as the primary public distribution point
+- GitHub Packages adds registry and auth friction that weakens the one-line install story
 
 The package is self-contained:
 
@@ -47,6 +48,12 @@ Recommended public install command after publish:
 npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
+Temporary fallback while npm is unavailable:
+
+```bash
+npx -y -p https://github.com/spfr/figma-design-pipeline/releases/download/figma-design-pipeline-v0.5.0/spfr-figma-design-pipeline-0.5.0.tgz spfr-figma-design-pipeline-install --client all
+```
+
 Suggested release trigger:
 
 - create and push a tag like `figma-design-pipeline-v0.5.0`
@@ -59,7 +66,7 @@ The plugin can be published separately in the Figma Community so users can find 
 Recommended listing language:
 
 - This plugin is the **Figma-side executor** for SPFR Figma Design Pipeline.
-- Read-only REST-based inspection works without the plugin.
+- Read-only REST-based inspection and planning work without the plugin.
 - Mutations and local style sync require the plugin plus the local MCP server.
 - The plugin connects only to a local bridge on `127.0.0.1` and does not require a hosted backend.
 

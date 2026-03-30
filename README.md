@@ -1,8 +1,8 @@
 # SPFR Figma Design Pipeline
 
-A two-way Figma automation system via the [Model Context Protocol (MCP)](https://modelcontextprotocol.io). Inspect designs, plan changes, execute mutations, and generate code — from any MCP-compatible client.
+Open-source MCP workflow for Figma. Inspect designs, plan changes, apply safe mutations, sync tokens, and generate code from local AI tools and desktop apps.
 
-Works with **Claude Code**, **Cursor**, **Windsurf**, **Cline**, **AntiGravity**, and any other MCP client.
+Built for **Claude Code**, **Codex**, **Gemini CLI**, and **Claude Desktop**. It also works with other MCP clients that can launch a local stdio server.
 
 ## How It Works
 
@@ -84,6 +84,7 @@ That command:
 - packages a Claude Desktop bundle at `dist/figma-design-pipeline.mcpb`
 - deploys the Figma plugin to `~/.figma-design-pipeline/plugin/`
 - registers the MCP server for supported local clients when their CLI is available
+- installs the thin bundled skill where the target client supports skills
 
 To target a specific client:
 
@@ -130,15 +131,32 @@ dist/figma-design-pipeline.mcpb
 
 Open **Settings > Extensions** in Claude Desktop and install that bundle.
 
-## Publishable Distribution
+## Public Distribution
 
-This package is now structured to be published independently:
+This project is structured to ship cleanly in public:
 
-- npm package for the MCP server, installer, skill bundle, and Claude Desktop bundle
-- Figma Community plugin for discovery and one-click installation inside Figma
+- npm package for the MCP server, installer, thin skill bundle, and Claude Desktop bundle
+- Figma Community plugin for in-product discovery and installation inside Figma
 - GitHub Actions workflow for npm trusted publishing
+- GitHub Pages site for public docs and install instructions
 
-See [PUBLISHING.md](PUBLISHING.md) for the release checklist and positioning.
+See [PUBLISHING.md](PUBLISHING.md) for the release process and registry guidance.
+
+## Install Experience
+
+The intended user flow is:
+
+1. Install the Figma plugin from the Figma Community
+2. Run the one-line local installer:
+
+```bash
+npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+```
+
+3. Set `FIGMA_ACCESS_TOKEN`
+4. Use the pipeline from Claude, Codex, Gemini, or Claude Desktop
+
+The plugin is the Figma-side executor. The npm package installs the local MCP server and client integration.
 
 ## Manual Config Snippets
 

@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Figma Design Pipeline</title>
-    <meta name="description" content="Open-source MCP pipeline for inspecting, mutating, syncing tokens, and generating code from Figma designs.">
+    <title>SPFR Figma Design Pipeline</title>
+    <meta name="description" content="Open-source MCP pipeline for Figma: inspect designs, apply safe mutations, sync tokens, and generate code from Claude, Codex, Gemini, and Figma desktop.">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -12,7 +12,7 @@
       <section class="hero">
         <p class="eyebrow">Open Source Figma + MCP</p>
         <h1>SPFR Figma Design Pipeline</h1>
-        <p class="lede">Inspect designs, plan changes, execute safe mutations, sync tokens, and generate code through a local MCP workflow.</p>
+        <p class="lede">Inspect designs, plan changes, execute safe mutations, sync tokens, and generate code through a local MCP workflow built for Claude, Codex, Gemini, and Figma desktop.</p>
         <div class="actions">
           <a class="button primary" href="../README.md">Read the README</a>
           <a class="button" href="../PUBLISHING.md">Publishing Guide</a>
@@ -24,13 +24,13 @@
         <article class="card">
           <h2>One-Line MCP Install</h2>
           <pre><code>npx -y -p @spfr/figma-design-pipeline spfr-figma-design-pipeline-install --client all</code></pre>
-          <p>Registers the MCP server for Claude, Gemini, and Codex, installs the bundled skill, packages the Claude Desktop bundle, and deploys the local Figma plugin manifest.</p>
+          <p>Registers the MCP server for Claude, Gemini, and Codex, installs the thin bundled skill, packages the Claude Desktop bundle, and deploys the local Figma plugin manifest.</p>
         </article>
 
         <article class="card">
           <h2>Figma Plugin</h2>
-          <p>The Figma-side executor can be published in the Figma Community so users can find and install it directly in Figma.</p>
-          <p>It only connects to a local bridge on <code>127.0.0.1</code>. Read-only inspection still works without the plugin.</p>
+          <p>The Figma-side executor is designed to be published in the Figma Community so users can find and install it directly in Figma.</p>
+          <p>It only connects to a local bridge on <code>127.0.0.1</code>. Read-only inspection and planning still work without the plugin.</p>
         </article>
 
         <article class="card">
@@ -68,7 +68,7 @@
           <li>Review <a href="../SECURITY.md">SECURITY.md</a> and the release-hardening checklist.</li>
           <li>Publish the npm package.</li>
           <li>Publish the Figma plugin listing in the Figma Community.</li>
-          <li>Enable GitHub Pages from the <code>docs/</code> directory.</li>
+          <li>Verify the public install command from the published package.</li>
         </ol>
       </section>
     </main>
