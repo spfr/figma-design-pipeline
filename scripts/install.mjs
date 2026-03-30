@@ -12,7 +12,10 @@ const bundledSkillDir = resolve(packageDir, "skill");
 const repoSkillDir = resolve(repoRoot, "skills", "figma-design-pipeline");
 const skillDir = existsSync(bundledSkillDir) ? bundledSkillDir : repoSkillDir;
 const distDir = resolve(packageDir, "dist");
+const serverBundlePath = resolve(distDir, "index.js");
 const pluginSourceDir = resolve(distDir, "plugin");
+const pluginManifestPath = resolve(pluginSourceDir, "manifest.json");
+const pluginCodePath = resolve(pluginSourceDir, "code.js");
 const pluginInstallDir = resolve(os.homedir(), ".figma-design-pipeline", "plugin");
 const desktopBundlePath = resolve(distDir, "figma-design-pipeline.mcpb");
 const codexConfigPath = resolve(os.homedir(), ".codex", "config.toml");
@@ -55,15 +58,7 @@ if (!knownClients.has(options.client)) {
   process.exit(1);
 }
 
-if (!options.skipBuild) {
-  runBuildStep(resolve(packageDir, "scripts", "build-server.mjs"));
-  runBuildStep(resolve(packageDir, "scripts", "build-plugin.mjs"));
-  runBuildStep(resolve(packageDir, "scripts", "package-desktop-extension.mjs"));
-}
-
-if (!existsSync(resolve(distDir, "index.js")) || !existsSync(resolve(pluginSourceDir, "manifest.json"))) {
-  throw new Error("Missing build artifacts in dist/. Run npm run build first.");
-}
+ensureBuildArtifacts();
 
 deployPluginBundle();
 
@@ -140,6 +135,60 @@ function runBuildStep(scriptPath) {
   });
 }
 
+function ensureBuildArtifacts() {
+  const requireDesktopBundle = matches(options.client, "claude-desktop");
+  const needsServer = !options.skipMcp && matches(options.client, "claude", "claude-code", "gemini", "gemini-cli", "codex", "codex-cli");
+  const needsPlugin = true;
+
+  if (needsServer) {
+    ensureArtifact({
+      path: serverBundlePath,
+      script: resolve(packageDir, "scripts", "build-server.mjs"),
+      label: "MCP server bundle",
+    });
+  }
+
+  if (needsPlugin) {
+    ensureArtifact({
+      path: pluginCodePath,
+      script: resolve(packageDir, "scripts", "build-plugin.mjs"),
+      label: "Figma plugin bundle",
+    });
+    ensureArtifact({
+      path: pluginManifestPath,
+      label: "Figma plugin manifest",
+    });
+  }
+
+  if (requireDesktopBundle) {
+    ensureArtifact({
+      path: desktopBundlePath,
+      script: resolve(packageDir, "scripts", "package-desktop-extension.mjs"),
+      label: "Claude Desktop bundle",
+    });
+  }
+}
+
+function ensureArtifact({ path, script, label }) {
+  if (existsSync(path)) {
+    return;
+  }
+
+  if (options.skipBuild) {
+    throw new Error(`Missing ${label} at ${path}. Re-run without --skip-build or build the package first.`);
+  }
+
+  if (!script || !existsSync(script)) {
+    throw new Error(`Missing ${label} at ${path}. This install target expects bundled dist/ artifacts, but the package does not include them.`);
+  }
+
+  runBuildStep(script);
+
+  if (!existsSync(path)) {
+    throw new Error(`Failed to create ${label} at ${path}.`);
+  }
+}
+
 function ensureDir(path) {
   mkdirSync(path, { recursive: true });
 }
@@ -170,7 +219,8 @@ function installClaudeCodeMcp() {
   if (hasCommand("claude")) {
     try {
       execFileSync("claude", ["mcp", "add-json", "--scope", "user", "figma-design-pipeline", serverJson], {
-        stdio: "inherit",
+        stdio: ["ignore", "inherit", "inherit"],
+        timeout: 15000,
       });
       return;
     } catch {
@@ -235,7 +285,7 @@ function escapeRegex(value) {
 function buildStdioServerConfig() {
   return {
     command: "node",
-    args: [resolve(distDir, "index.js")],
+    args: [serverBundlePath],
     env: {
       FIGMA_ACCESS_TOKEN: "$FIGMA_ACCESS_TOKEN",
       FIGMA_FILE_KEY: "$FIGMA_FILE_KEY",
