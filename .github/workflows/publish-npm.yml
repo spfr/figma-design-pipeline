@@ -6,6 +6,9 @@ on:
       - "figma-design-pipeline-v*"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 permissions:
   contents: read
   id-token: write
@@ -14,9 +17,9 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: "24"
           registry-url: "https://registry.npmjs.org"
@@ -27,7 +30,7 @@ jobs:
       - run: npm run build
       - run: npm run build:desktop
       - run: npm run build:figma-community
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: spicefactory-figma-design-pipeline-release-assets
           path: |
