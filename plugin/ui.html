@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<body>
+<div id="status" style="font:11px/1.4 system-ui;padding:8px;color:#666">Connecting...</div>
+<script>
+const PORTS = [4010, 4011, 4012, 4013, 4014];
+const RECONNECT_MS = 2000;
+const MAX_RECONNECT_MS = 30000;
+
+let ws = null;
+let portIdx = 0;
+let delay = RECONNECT_MS;
+let timer = null;
+
+const el = document.getElementById("status");
+
+function connect() {
+  if (ws) try { ws.close(); } catch(e) {}
+  const port = PORTS[portIdx];
+  const url = "ws://localhost:" + port + "/plugin";
+  ws = new WebSocket(url);
+
+  ws.onopen = function() {
+    delay = RECONNECT_MS;
+    el.textContent = "Connected (port " + port + ")";
+    el.style.color = "#0a0";
+    parent.postMessage({ pluginMessage: { type: "bridge_connected" } }, "*");
+  };
+
+  ws.onmessage = function(e) {
+    try {
+      parent.postMessage({ pluginMessage: { type: "bridge_message", data: JSON.parse(e.data) } }, "*");
+    } catch(err) {
+      console.error("[ui] Bad JSON:", err);
+    }
+  };
+
+  ws.onclose = function() {
+    el.textContent = "Disconnected — reconnecting...";
+    el.style.color = "#c00";
+    ws = null;
+    parent.postMessage({ pluginMessage: { type: "bridge_disconnected" } }, "*");
+    scheduleReconnect();
+  };
+
+  ws.onerror = function() {};
+}
+
+function scheduleReconnect() {
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(function() {
+    timer = null;
+    delay = Math.min(delay * 1.5, MAX_RECONNECT_MS);
+    portIdx = (portIdx + 1) % PORTS.length;
+    connect();
+  }, delay);
+}
+
+window.onmessage = function(e) {
+  var msg = e.data.pluginMessage;
+  if (!msg) return;
+  if (msg.type === "send_to_bridge" && ws && ws.readyState === 1) {
+    ws.send(JSON.stringify(msg.data));
+  }
+};
+
+connect();
+</script>
+</body>
+</html>

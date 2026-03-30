@@ -23,6 +23,8 @@ import {
   getComponentsInputSchema,
   getStylesInputSchema,
   diffTokensInputSchema,
+  executeInputSchema,
+  pluginStatusInputSchema,
 } from "./shared/types.js";
 
 // ─── Inspect tools ───────────────────────────────────────────────────
@@ -47,6 +49,11 @@ import { handleGeneratePage } from "./tools/codegen/generate-page.js";
 import { handleGenerateSchema } from "./tools/codegen/generate-schema.js";
 import { handleExportTokens } from "./tools/codegen/export-tokens.js";
 
+// ─── Plugin tools ───────────────────────────────────────────────────
+import { BridgeServer } from "./plugin/bridge.js";
+import { handleExecute } from "./tools/plugin/execute.js";
+import { handlePluginStatus } from "./tools/plugin/status.js";
+
 // ─── Configuration ──────────────────────────────────────────────────
 
 const FIGMA_ACCESS_TOKEN = process.env.FIGMA_ACCESS_TOKEN;
@@ -60,6 +67,8 @@ if (FIGMA_ACCESS_TOKEN) {
 }
 
 const snapshotCache = new SnapshotCache();
+const BRIDGE_PORT = Number(process.env.FIGMA_PLUGIN_PORT || 4010);
+const bridge = new BridgeServer();
 
 // Track the last root node for session continuity
 let lastRootNodeId: string | undefined;
@@ -470,9 +479,47 @@ server.tool(
   }
 );
 
+// ─── Plugin tools (high-performance batch execution) ────────────────
+
+server.tool(
+  "figma_execute",
+  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 27 action types: rename, create_frame, set_fills, set_text_content, create_component, etc. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
+  executeInputSchema.shape,
+  async (params) => {
+    const result = await handleExecute(bridge, {
+      actions: params.actions,
+      dryRun: params.dryRun,
+      stopOnError: params.stopOnError,
+      rollbackOnError: params.rollbackOnError,
+      timeoutMs: params.timeoutMs,
+    });
+    if (result.pluginConnected) {
+      snapshotCache.invalidateAll();
+    }
+    return jsonResponse(result);
+  }
+);
+
+server.tool(
+  "figma_plugin_status",
+  "Check if the Figma plugin is connected. Returns connection status, plugin version, current page, and pending batches.",
+  pluginStatusInputSchema.shape,
+  async () => {
+    return jsonResponse(handlePluginStatus(bridge));
+  }
+);
+
 // ─── Start ──────────────────────────────────────────────────────────
 
 async function main() {
+  // Start the plugin bridge (non-fatal if port is busy)
+  try {
+    const port = await bridge.start(BRIDGE_PORT);
+    console.error(`[mcp] Plugin bridge listening on ws://127.0.0.1:${port}/plugin`);
+  } catch (err) {
+    console.error(`[mcp] Plugin bridge failed to start: ${err instanceof Error ? err.message : err}`);
+  }
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 

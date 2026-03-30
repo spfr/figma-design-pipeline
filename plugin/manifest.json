@@ -1,0 +1,19 @@
+{
+  "name": "SPFR Design Pipeline",
+  "id": "spfr-figma-design-pipeline",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": [
+      "ws://localhost:4010",
+      "ws://localhost:4011",
+      "ws://localhost:4012",
+      "ws://localhost:4013",
+      "ws://localhost:4014"
+    ],
+    "reasoning": "Connects to a local MCP bridge on localhost for design automation. Only communicates with the user's own machine."
+  }
+}

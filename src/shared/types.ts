@@ -468,3 +468,15 @@ export const diffTokensInputSchema = z.object({
   effects: z.array(effectTokenSchema).default([]).describe("Effect tokens from your code to compare"),
   figmaStyles: figmaStyleDataSchema.describe("Figma style data to compare against. Get this from the official Figma MCP or REST API."),
 });
+
+// ─── Plugin Tool Schemas ────────────────────────────────────────────
+
+export const executeInputSchema = z.object({
+  actions: z.array(z.any()).min(1).max(500).describe("Array of validated Figma actions (see figma://actions resource for schema reference)"),
+  dryRun: z.boolean().default(false).describe("Preview without executing"),
+  stopOnError: z.boolean().default(true).describe("Stop batch on first error"),
+  rollbackOnError: z.boolean().default(false).describe("Undo all applied actions if any fails"),
+  timeoutMs: z.number().int().min(5000).max(120000).default(30000).describe("Timeout in ms"),
+});
+
+export const pluginStatusInputSchema = z.object({});

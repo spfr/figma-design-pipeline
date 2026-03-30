@@ -6,6 +6,9 @@ description: >
   Use alongside Figma write tools (use_figma, create_new_file) which are provided by the Figma integration
   in your environment. This skill adds the analysis brain; the Figma integration provides the hands.
 allowed-tools:
+  # Plugin tools (high-performance batch execution via Figma plugin)
+  - mcp__figma-design-pipeline__figma_execute
+  - mcp__figma-design-pipeline__figma_plugin_status
   # Analysis & codegen tools (figma-design-pipeline MCP)
   - mcp__figma-design-pipeline__figma_get_tree
   - mcp__figma-design-pipeline__figma_audit
@@ -33,6 +36,31 @@ allowed-tools:
 # Figma Design Intelligence
 
 This skill provides design analysis, planning, and code generation for Figma workflows. It works alongside your environment's Figma write tools — you use those to create and modify designs, and this skill to analyze, audit, plan, and generate code.
+
+## High-Performance Plugin (figma_execute)
+
+**At the start of any design task, call `figma_plugin_status` to check if the plugin is connected.**
+
+When `connected: true`:
+- **ALWAYS use `figma_execute` instead of `use_figma`** for creating styles, components, modifying nodes, batch operations. It sends actions directly to Figma via WebSocket — 30-60x faster.
+- Still use `create_new_file` from the Figma MCP to create new files (the plugin can't create files).
+- Still use `use_figma` for queries that need arbitrary JS (reading complex state, finding nodes by criteria).
+
+When `connected: false`:
+- `figma_execute` returns fallback JavaScript you can pass to `use_figma`.
+- Or use `use_figma` / `create_new_file` directly.
+
+Example — creating 10 color styles:
+```
+// With plugin: ONE call, ~200ms
+figma_execute({ actions: [
+  { type: "create_paint_style", name: "Brand/Primary", paints: [...] },
+  { type: "create_paint_style", name: "Brand/Secondary", paints: [...] },
+  // ... 8 more
+]})
+
+// Without plugin: TEN separate use_figma calls, ~10 seconds
+```
 
 ## What This Skill Provides
 

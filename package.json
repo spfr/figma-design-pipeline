@@ -1,7 +1,7 @@
 {
   "name": "@spicefactory/figma-design-pipeline",
   "version": "0.6.0",
-  "description": "AI design assistant MCP server: inspect Figma designs, plan changes, extract tokens, sync design systems, and generate code. Works with the official Figma MCP for full read/write access.",
+  "description": "AI design assistant MCP server: inspect Figma designs, plan changes, extract tokens, sync design systems, and generate code. Includes a high-performance Figma plugin for 30-60x faster writes than use_figma.",
   "keywords": [
     "figma",
     "mcp",
@@ -37,6 +37,7 @@
   "files": [
     "bin",
     "dist/index.js",
+    "plugin/dist",
     "scripts/install.mjs",
     "skill",
     "PUBLISHING.md",
@@ -44,7 +45,9 @@
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
-    "build": "node scripts/build-server.mjs",
+    "build": "npm run build:server && npm run build:plugin",
+    "build:server": "node scripts/build-server.mjs",
+    "build:plugin": "node scripts/build-plugin.mjs",
     "check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "install:clients": "node scripts/install.mjs",
@@ -54,10 +57,13 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.28.0",
     "dotenv": "^17.3.1",
+    "ws": "^8.20.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@figma/plugin-typings": "^1.124.0",
     "@types/node": "^22.19.15",
+    "@types/ws": "^8.5.13",
     "esbuild": "^0.25.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
