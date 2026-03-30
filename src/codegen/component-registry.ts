@@ -10,15 +10,17 @@ import type { EnrichedNode } from "../shared/types.js";
  */
 const REGISTRY_DIR = process.env.COMPONENT_REGISTRY_DIR || join(process.cwd(), "registry");
 
-let cachedRegistry: ComponentRegistry | null = null;
+const registryCache = new Map<string, ComponentRegistry>();
 
 export async function loadRegistry(name = "default"): Promise<ComponentRegistry> {
-  if (cachedRegistry) return cachedRegistry;
+  const cached = registryCache.get(name);
+  if (cached) return cached;
 
   const filePath = join(REGISTRY_DIR, `${name}-components.json`);
   const raw = await readFile(filePath, "utf-8");
-  cachedRegistry = JSON.parse(raw) as ComponentRegistry;
-  return cachedRegistry;
+  const registry = JSON.parse(raw) as ComponentRegistry;
+  registryCache.set(name, registry);
+  return registry;
 }
 
 /**

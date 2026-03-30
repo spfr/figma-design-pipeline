@@ -39,6 +39,12 @@ export function hexToRgba(hex: string): FigmaColor {
   return { r, g, b, a };
 }
 
+/** Compute relative luminance per WCAG 2.1 (0 = black, 1 = white). */
+export function relativeLuminance(r: number, g: number, b: number): number {
+  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
+}
+
 /** Check if two RGBA colors are close enough to be considered equal (±1/255). */
 export function colorsClose(a: FigmaColor, b: FigmaColor): boolean {
   return (

@@ -148,7 +148,6 @@ export interface EnrichedNode {
   id: string;
   name: string;
   type: string;
-  originalName: string;
   classification: NodeClassification;
   depth: number;
   childCount: number;

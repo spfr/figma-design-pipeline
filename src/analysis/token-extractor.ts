@@ -1,4 +1,4 @@
-import type { FigmaRawNode, FigmaColor, FigmaPaint, DesignToken } from "../shared/types.js";
+import type { FigmaRawNode, FigmaColor, DesignToken } from "../shared/types.js";
 import { rgbaToHex } from "../shared/color.js";
 
 export interface ExtractedTokens {
@@ -167,35 +167,52 @@ export function extractNodeTokens(node: FigmaRawNode): DesignToken[] {
 
 // ─── Tailwind Mapping Helpers ────────────────────────────────────────
 
+const COLOR_MAP: Record<string, string> = {
+  "#000000": "black",
+  "#ffffff": "white",
+  "#f8fafc": "slate-50",
+  "#f1f5f9": "slate-100",
+  "#e2e8f0": "slate-200",
+  "#cbd5e1": "slate-300",
+  "#94a3b8": "slate-400",
+  "#64748b": "slate-500",
+  "#475569": "slate-600",
+  "#334155": "slate-700",
+  "#1e293b": "slate-800",
+  "#0f172a": "slate-900",
+  "#111827": "gray-900",
+  "#1f2937": "gray-800",
+  "#374151": "gray-700",
+  "#6b7280": "gray-500",
+  "#9ca3af": "gray-400",
+  "#d1d5db": "gray-300",
+  "#e5e7eb": "gray-200",
+  "#f3f4f6": "gray-100",
+  "#f9fafb": "gray-50",
+};
+
+const FONT_SIZE_MAP: Record<number, string> = {
+  12: "text-xs", 14: "text-sm", 16: "text-base", 18: "text-lg",
+  20: "text-xl", 24: "text-2xl", 30: "text-3xl", 36: "text-4xl",
+  48: "text-5xl", 60: "text-6xl", 72: "text-7xl", 96: "text-8xl",
+};
+
+const FONT_WEIGHT_MAP: Record<number, string> = {
+  100: "font-thin", 200: "font-extralight", 300: "font-light",
+  400: "font-normal", 500: "font-medium", 600: "font-semibold",
+  700: "font-bold", 800: "font-extrabold", 900: "font-black",
+};
+
+const SPACING_MAP: Record<number, string> = {
+  0: "0", 1: "px", 2: "0.5", 4: "1", 6: "1.5", 8: "2", 10: "2.5",
+  12: "3", 14: "3.5", 16: "4", 20: "5", 24: "6", 28: "7", 32: "8",
+  36: "9", 40: "10", 44: "11", 48: "12", 56: "14", 64: "16",
+  80: "20", 96: "24", 112: "28", 128: "32", 144: "36", 160: "40",
+};
+
 function mapColorToTailwind(c: FigmaColor): string {
   const hex = rgbaToHex(c);
-
-  // Common color mappings
-  const colorMap: Record<string, string> = {
-    "#000000": "black",
-    "#ffffff": "white",
-    "#f8fafc": "slate-50",
-    "#f1f5f9": "slate-100",
-    "#e2e8f0": "slate-200",
-    "#cbd5e1": "slate-300",
-    "#94a3b8": "slate-400",
-    "#64748b": "slate-500",
-    "#475569": "slate-600",
-    "#334155": "slate-700",
-    "#1e293b": "slate-800",
-    "#0f172a": "slate-900",
-    "#111827": "gray-900",
-    "#1f2937": "gray-800",
-    "#374151": "gray-700",
-    "#6b7280": "gray-500",
-    "#9ca3af": "gray-400",
-    "#d1d5db": "gray-300",
-    "#e5e7eb": "gray-200",
-    "#f3f4f6": "gray-100",
-    "#f9fafb": "gray-50",
-  };
-
-  return colorMap[hex.toLowerCase()] || `[${hex}]`;
+  return COLOR_MAP[hex.toLowerCase()] || `[${hex}]`;
 }
 
 function mapFontToTailwind(style: {
@@ -204,75 +221,16 @@ function mapFontToTailwind(style: {
   lineHeightPx?: number;
 }): string {
   const parts: string[] = [];
-
-  // Font size
-  const sizeMap: Record<number, string> = {
-    12: "text-xs",
-    14: "text-sm",
-    16: "text-base",
-    18: "text-lg",
-    20: "text-xl",
-    24: "text-2xl",
-    30: "text-3xl",
-    36: "text-4xl",
-    48: "text-5xl",
-    60: "text-6xl",
-    72: "text-7xl",
-    96: "text-8xl",
-  };
   const fontSize = style.fontSize || 16;
-  parts.push(sizeMap[fontSize] || `text-[${fontSize}px]`);
-
-  // Font weight
-  const weightMap: Record<number, string> = {
-    100: "font-thin",
-    200: "font-extralight",
-    300: "font-light",
-    400: "font-normal",
-    500: "font-medium",
-    600: "font-semibold",
-    700: "font-bold",
-    800: "font-extrabold",
-    900: "font-black",
-  };
+  parts.push(FONT_SIZE_MAP[fontSize] || `text-[${fontSize}px]`);
   if (style.fontWeight && style.fontWeight !== 400) {
-    parts.push(weightMap[style.fontWeight] || `font-[${style.fontWeight}]`);
+    parts.push(FONT_WEIGHT_MAP[style.fontWeight] || `font-[${style.fontWeight}]`);
   }
-
   return parts.join(" ");
 }
 
 function mapSpacingToTailwind(px: number): string {
-  // Tailwind 4 spacing scale (in px: value * 4)
-  const spacingMap: Record<number, string> = {
-    0: "0",
-    1: "px",
-    2: "0.5",
-    4: "1",
-    6: "1.5",
-    8: "2",
-    10: "2.5",
-    12: "3",
-    14: "3.5",
-    16: "4",
-    20: "5",
-    24: "6",
-    28: "7",
-    32: "8",
-    36: "9",
-    40: "10",
-    44: "11",
-    48: "12",
-    56: "14",
-    64: "16",
-    80: "20",
-    96: "24",
-    112: "28",
-    128: "32",
-    144: "36",
-    160: "40",
-  };
-  return spacingMap[px] ? `gap-${spacingMap[px]}` : `gap-[${px}px]`;
+  return SPACING_MAP[px] ? `gap-${SPACING_MAP[px]}` : `gap-[${px}px]`;
 }
 
 function mapRadiusToTailwind(px: number): string {

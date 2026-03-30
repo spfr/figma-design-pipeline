@@ -59,36 +59,37 @@ export async function handleFindNodes(
   walkTree(tree, (node) => {
     totalScanned++;
 
-    // Apply filters — all must match
-    if (nameRegex && !nameRegex.test(node.name)) return;
-    if (params.type && node.type.toUpperCase() !== params.type.toUpperCase()) return;
-    if (params.classification && node.classification !== params.classification) return;
-    if (textRegex && (!node.textContent || !textRegex.test(node.textContent))) return;
-    if (params.componentId && node.componentId !== params.componentId) return;
-    if (params.hasChildren !== undefined) {
-      if (params.hasChildren && node.childCount === 0) return;
-      if (!params.hasChildren && node.childCount > 0) return;
-    }
-    if (params.minWidth !== undefined && (!node.bounds || node.bounds.width < params.minWidth)) return;
-    if (params.maxWidth !== undefined && (!node.bounds || node.bounds.width > params.maxWidth)) return;
-    if (params.minHeight !== undefined && (!node.bounds || node.bounds.height < params.minHeight)) return;
-    if (params.maxHeight !== undefined && (!node.bounds || node.bounds.height > params.maxHeight)) return;
+    if (matches.length >= limit) return false; // early exit
 
-    if (matches.length < limit) {
-      matches.push({
-        id: node.id,
-        name: node.name,
-        type: node.type,
-        classification: node.classification,
-        depth: node.depth,
-        childCount: node.childCount,
-        bounds: node.bounds,
-        textContent: node.textContent,
-        componentId: node.componentId,
-        isComponent: node.isComponent,
-        isInstance: node.isInstance,
-      });
+    // Apply filters — all must match
+    if (nameRegex && !nameRegex.test(node.name)) return true;
+    if (params.type && node.type.toUpperCase() !== params.type.toUpperCase()) return true;
+    if (params.classification && node.classification !== params.classification) return true;
+    if (textRegex && (!node.textContent || !textRegex.test(node.textContent))) return true;
+    if (params.componentId && node.componentId !== params.componentId) return true;
+    if (params.hasChildren !== undefined) {
+      if (params.hasChildren && node.childCount === 0) return true;
+      if (!params.hasChildren && node.childCount > 0) return true;
     }
+    if (params.minWidth !== undefined && (!node.bounds || node.bounds.width < params.minWidth)) return true;
+    if (params.maxWidth !== undefined && (!node.bounds || node.bounds.width > params.maxWidth)) return true;
+    if (params.minHeight !== undefined && (!node.bounds || node.bounds.height < params.minHeight)) return true;
+    if (params.maxHeight !== undefined && (!node.bounds || node.bounds.height > params.maxHeight)) return true;
+
+    matches.push({
+      id: node.id,
+      name: node.name,
+      type: node.type,
+      classification: node.classification,
+      depth: node.depth,
+      childCount: node.childCount,
+      bounds: node.bounds,
+      textContent: node.textContent,
+      componentId: node.componentId,
+      isComponent: node.isComponent,
+      isInstance: node.isInstance,
+    });
+    return true;
   });
 
   return {
@@ -98,7 +99,10 @@ export async function handleFindNodes(
   };
 }
 
-function walkTree(node: EnrichedNode, visit: (n: EnrichedNode) => void): void {
-  visit(node);
-  for (const child of node.children) walkTree(child, visit);
+function walkTree(node: EnrichedNode, visit: (n: EnrichedNode) => boolean): boolean {
+  if (!visit(node)) return false;
+  for (const child of node.children) {
+    if (!walkTree(child, visit)) return false;
+  }
+  return true;
 }

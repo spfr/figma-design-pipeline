@@ -6,7 +6,7 @@ import type {
   EnrichedNode,
 } from "../../shared/types.js";
 import { isGenericName, hasNumberedSuffix } from "../../shared/naming.js";
-import { hexToRgba } from "../../shared/color.js";
+import { hexToRgba, relativeLuminance } from "../../shared/color.js";
 import { handleGetTree } from "./get-tree.js";
 
 interface AuditParams {
@@ -51,15 +51,17 @@ export async function handleAudit(ctx: ToolContext, params: AuditParams): Promis
     }
   });
 
-  // Build summary
+  // Build summary in a single pass
   const summary = {} as AuditResult["summary"];
   for (const cat of checks) {
-    const catViolations = violations.filter((v) => v.category === cat);
-    summary[cat] = {
-      errors: catViolations.filter((v) => v.severity === "error").length,
-      warnings: catViolations.filter((v) => v.severity === "warning").length,
-      info: catViolations.filter((v) => v.severity === "info").length,
-    };
+    summary[cat] = { errors: 0, warnings: 0, info: 0 };
+  }
+  for (const v of violations) {
+    const s = summary[v.category];
+    if (!s) continue;
+    if (v.severity === "error") s.errors++;
+    else if (v.severity === "warning") s.warnings++;
+    else s.info++;
   }
 
   // Truncate violations to avoid overloading LLM context — summary always reflects full counts
@@ -297,13 +299,6 @@ function checkAccessibility(node: EnrichedNode, violations: AuditViolation[]): v
       });
     }
   }
-}
-
-// ─── Color Helpers ────────────────────────────────────────────────────
-
-function relativeLuminance(r: number, g: number, b: number): number {
-  const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
-  return 0.2126 * toLinear(r) + 0.7152 * toLinear(g) + 0.0722 * toLinear(b);
 }
 
 function walkEnriched(node: EnrichedNode, visit: (n: EnrichedNode) => void): void {

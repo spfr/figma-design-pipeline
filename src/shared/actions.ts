@@ -291,16 +291,6 @@ export const setComponentPropertiesActionSchema = z
 
 // ─── Style actions ───────────────────────────────────────────────────
 
-export const getLocalStylesActionSchema = z
-  .object({
-    type: z.literal("get_local_styles"),
-    styleTypes: z
-      .array(z.enum(["PAINT", "TEXT", "EFFECT"]))
-      .optional()
-      .describe("Which style types to return. Omit for all."),
-  })
-  .strict();
-
 export const createPaintStyleActionSchema = z
   .object({
     type: z.literal("create_paint_style"),
@@ -388,7 +378,6 @@ export const actionSchema = z.discriminatedUnion("type", [
   setAlignmentActionSchema,
   duplicateNodeActionSchema,
   setComponentPropertiesActionSchema,
-  getLocalStylesActionSchema,
   createPaintStyleActionSchema,
   createTextStyleActionSchema,
   createEffectStyleActionSchema,

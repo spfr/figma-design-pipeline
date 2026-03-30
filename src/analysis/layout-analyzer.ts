@@ -61,7 +61,7 @@ function inferLayout(node: FigmaRawNode): LayoutSuggestion | null {
       confidence: horizontalResult.confidence,
       suggestedSpacing: horizontalResult.spacing,
       suggestedPadding: parentBounds
-        ? inferPadding(parentBounds, bounds, "horizontal")
+        ? inferPadding(parentBounds, bounds)
         : undefined,
       reason: horizontalResult.reason,
     };
@@ -76,7 +76,7 @@ function inferLayout(node: FigmaRawNode): LayoutSuggestion | null {
       confidence: verticalResult.confidence,
       suggestedSpacing: verticalResult.spacing,
       suggestedPadding: parentBounds
-        ? inferPadding(parentBounds, bounds, "vertical")
+        ? inferPadding(parentBounds, bounds)
         : undefined,
       reason: verticalResult.reason,
     };
@@ -175,7 +175,6 @@ function checkVerticalArrangement(
 function inferPadding(
   parent: FigmaAbsoluteBoundingBox,
   children: FigmaAbsoluteBoundingBox[],
-  direction: "horizontal" | "vertical"
 ): { top: number; right: number; bottom: number; left: number } {
   const minX = Math.min(...children.map((c) => c.x));
   const minY = Math.min(...children.map((c) => c.y));

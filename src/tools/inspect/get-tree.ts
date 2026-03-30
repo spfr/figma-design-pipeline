@@ -65,7 +65,7 @@ export async function handleGetTree(
 
 /**
  * Produce a compact tree for LLM consumption.
- * Strips tokens, componentProperties, variantProperties, originalName.
+ * Strips tokens, componentProperties, variantProperties.
  * Collapses leaf vector/shape nodes (VECTOR, ELLIPSE, LINE, STAR, etc.)
  * into a single summary when there are many siblings.
  */
@@ -73,8 +73,11 @@ export function compactTree(node: EnrichedNode): CompactNode {
   // Collapse vector-heavy children (e.g., icon SVG paths)
   let children: CompactNode[];
   const vectorTypes = new Set(["VECTOR", "BOOLEAN_OPERATION", "LINE", "ELLIPSE", "STAR", "RECTANGLE"]);
-  const vectorChildren = node.children.filter(c => vectorTypes.has(c.type) && c.childCount === 0);
-  const otherChildren = node.children.filter(c => !(vectorTypes.has(c.type) && c.childCount === 0));
+  const vectorChildren: EnrichedNode[] = [];
+  const otherChildren: EnrichedNode[] = [];
+  for (const c of node.children) {
+    (vectorTypes.has(c.type) && c.childCount === 0 ? vectorChildren : otherChildren).push(c);
+  }
 
   if (vectorChildren.length > 3) {
     // Collapse many vector leaves into one placeholder
@@ -116,13 +119,13 @@ export function compactTree(node: EnrichedNode): CompactNode {
  * Progressively removes deeper children until under limit.
  */
 export function truncateTree(node: CompactNode, maxBytes: number): { tree: CompactNode; truncated: boolean; nodeCount: number } {
-  let result = structuredClone(node);
+  // pruneAtDepth builds a fresh tree from spreads — no clone needed
+  let result = node;
   let json = JSON.stringify(result);
   let truncated = false;
 
-  // Progressively reduce max depth until we fit
   for (let maxDepth = 8; json.length > maxBytes && maxDepth >= 1; maxDepth--) {
-    result = pruneAtDepth(structuredClone(node), maxDepth);
+    result = pruneAtDepth(node, maxDepth);
     json = JSON.stringify(result);
     truncated = true;
   }
@@ -184,7 +187,6 @@ function enrichNode(
     id: raw.id,
     name: raw.name,
     type: raw.type,
-    originalName: raw.name,
     classification,
     depth,
     childCount: children.length,

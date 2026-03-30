@@ -1,6 +1,7 @@
 import type { ToolContext } from "../../shared/context.js";
 import type { EnrichedNode } from "../../shared/types.js";
 import type { Action } from "../../shared/actions.js";
+import { toSlashName } from "../../shared/naming.js";
 import { handleGetTree } from "../inspect/get-tree.js";
 
 interface PlanGroupingParams {
@@ -56,7 +57,7 @@ function planSemanticGrouping(node: EnrichedNode, actions: Action[]): void {
     const bounds = computeGroupBounds(members);
     if (!bounds) continue;
 
-    const frameName = `Section/${classification.charAt(0).toUpperCase() + classification.slice(1)}`;
+    const frameName = toSlashName("Section", classification);
 
     // Create frame action
     actions.push({
