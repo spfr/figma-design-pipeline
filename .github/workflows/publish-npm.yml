@@ -28,9 +28,9 @@ jobs:
       - run: npm run build:figma-community
       - uses: actions/upload-artifact@v4
         with:
-          name: spfr-figma-design-pipeline-release-assets
+          name: spicefactory-figma-design-pipeline-release-assets
           path: |
             dist/figma-design-pipeline.mcpb
             dist/spfr-figma-plugin-community.zip
             dist/figma-community-submission/
-      - run: npm publish
+      - run: npm publish --provenance --access public

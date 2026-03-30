@@ -35,6 +35,35 @@ npm pack
 
 Set up npm publishing with **trusted publishing** on npmjs.com for the GitHub repo/workflow instead of storing a long-lived publish token in GitHub. The workflow in `.github/workflows/publish-npm.yml` is already prepared for that model.
 
+### npm Trusted Publisher Setup
+
+In npm, configure a trusted publisher for this package with these values:
+
+- npm package: `@spicefactory/figma-design-pipeline`
+- GitHub owner: `spfr`
+- GitHub repository: `figma-design-pipeline`
+- Workflow file: `.github/workflows/publish-npm.yml`
+- Trigger: tag push or manual workflow dispatch
+
+The GitHub workflow is already configured with:
+
+- `permissions.id-token: write`
+- `actions/setup-node` pointed at `https://registry.npmjs.org`
+- `npm publish --provenance --access public`
+
+Recommended npm-side flow:
+
+1. Create the package entry in the `spicefactory` npm org if it does not exist yet.
+2. Open the package settings in npm.
+3. Add a trusted publisher for `spfr/figma-design-pipeline`.
+4. Select `.github/workflows/publish-npm.yml`.
+5. Save, then trigger publishing by pushing a tag:
+
+```bash
+git tag figma-design-pipeline-v0.5.0
+git push origin figma-design-pipeline-v0.5.0
+```
+
 `prepack` already runs:
 
 ```bash
