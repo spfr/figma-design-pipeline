@@ -78,6 +78,12 @@ Published package:
 npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
+Run that published command from outside this repository. If you are working inside the repo itself, use:
+
+```bash
+node scripts/install.mjs --client all
+```
+
 That command:
 - builds a standalone MCP server bundle at `dist/index.js`
 - builds the Figma plugin at `dist/plugin/`
@@ -157,6 +163,59 @@ npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install
 4. Use the pipeline from Claude, Codex, Gemini, or Claude Desktop
 
 The plugin is the Figma-side executor. The npm package installs the local MCP server and client integration.
+
+## Updating
+
+For end users, updating is the same as installing again:
+
+```bash
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+```
+
+The installer is designed to be safe to rerun. Published Figma Community plugin updates are delivered through Figma, while the local MCP side updates when users rerun the npm installer.
+
+## End-To-End Smoke Test
+
+Use this sequence before a release and again after publishing:
+
+1. Run the local checks:
+
+```bash
+npm ci
+npm run check
+npm test
+npm run build
+npm run build:desktop
+npm run build:figma-community
+npm pack
+```
+
+2. Test the published install flow from outside the repo:
+
+```bash
+cd /tmp
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all --help
+```
+
+3. Test a real install into a clean temporary home:
+
+```bash
+TMP_HOME="$(mktemp -d)"
+cd /tmp
+HOME="$TMP_HOME" npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+```
+
+4. In Figma desktop, import or run the plugin and confirm:
+- the plugin opens
+- the plugin connects to the local bridge
+- inspect tools work without the plugin running
+- write flows work with the plugin open
+
+5. In an MCP client, verify:
+- `figma_get_tree` works with your `FIGMA_ACCESS_TOKEN`
+- a dry-run `figma_apply_batch` works
+- a real small mutation works
+- `figma_verify` confirms the change
 
 ## Manual Config Snippets
 

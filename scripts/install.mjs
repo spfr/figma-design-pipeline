@@ -196,12 +196,16 @@ function ensureDir(path) {
 function linkSkill(source, target) {
   ensureDir(dirname(target));
 
-  if (existsSync(target)) {
+  try {
     const stat = lstatSync(target);
     if (stat.isSymbolicLink()) {
       rmSync(target, { force: true });
     } else {
       throw new Error(`Refusing to replace non-symlink directory at ${target}`);
+    }
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code !== "ENOENT") {
+      throw error;
     }
   }
 

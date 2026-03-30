@@ -77,6 +77,8 @@ Recommended public install command after publish:
 npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
+Important: test that command from outside this repository. If you run it from inside the package repo, npm may resolve against the local workspace instead of the published package.
+
 Temporary fallback while npm is unavailable:
 
 ```bash
@@ -87,6 +89,23 @@ Suggested release trigger:
 
 - create and push a tag like `figma-design-pipeline-v0.5.0`
 - GitHub Actions publishes the package from the repo root
+
+### Release Verification
+
+Before or immediately after a release, run:
+
+```bash
+cd /tmp
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --help
+```
+
+Then test a clean-home install:
+
+```bash
+TMP_HOME="$(mktemp -d)"
+cd /tmp
+HOME="$TMP_HOME" npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+```
 
 ## Figma Community Plugin
 
@@ -117,6 +136,12 @@ npm run build:figma-community
 - setup link back to this package README
 - support contact and privacy disclosures appropriate for review
 4. Submit for Community review from Figma desktop.
+
+### Update Story
+
+- Figma users get updates through the Figma Community plugin listing.
+- CLI and desktop users update the local MCP side by rerunning the same npm installer command.
+- The installer should be treated as idempotent and safe to rerun after each package release.
 
 ### Review-Sensitive Points
 

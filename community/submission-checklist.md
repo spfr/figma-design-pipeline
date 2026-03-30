@@ -24,3 +24,12 @@ npm run build:figma-community
 - it works with a local MCP server
 - it connects only to localhost
 - it is most useful alongside the npm package
+
+6. After the plugin is approved, publish updates from the same Figma developer flow so existing Community installs receive the latest plugin version.
+
+7. After each plugin update, rerun the public npm installer from outside the repo to verify the local MCP side still matches the Community plugin:
+
+```bash
+cd /tmp
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all --help
+```
