@@ -1,5 +1,5 @@
 import type { ToolContext } from "../../shared/context.js";
-import type { EnrichedNode, PlanRecord } from "../../shared/types.js";
+import type { EnrichedNode } from "../../shared/types.js";
 import type { Action } from "../../shared/actions.js";
 import { handleGetTree } from "../inspect/get-tree.js";
 
@@ -11,7 +11,7 @@ interface PlanGroupingParams {
 export async function handlePlanGrouping(
   ctx: ToolContext,
   params: PlanGroupingParams
-): Promise<{ planId: string; nodeId: string; actionCount: number; actions: Action[]; plan: PlanRecord }> {
+): Promise<{ nodeId: string; actionCount: number; actions: Action[] }> {
   const { nodeId, strategy = "semantic" } = params;
 
   const { tree } = await handleGetTree(ctx, { nodeId, includeStyles: false });
@@ -26,10 +26,7 @@ export async function handlePlanGrouping(
     planMinimalGrouping(tree, actions);
   }
 
-  const plan = ctx.stateManager.addPlan("figma_plan_grouping", nodeId, actions);
-  await ctx.stateManager.save();
-
-  return { planId: plan.planId, nodeId, actionCount: actions.length, actions, plan };
+  return { nodeId, actionCount: actions.length, actions };
 }
 
 /**
@@ -71,11 +68,6 @@ function planSemanticGrouping(node: EnrichedNode, actions: Action[]): void {
       width: bounds.width,
       height: bounds.height,
     });
-
-    // Note: Move actions would reference the new frame's ID,
-    // which we don't know yet. The apply-batch handler will
-    // need to chain these using the created frame's ID.
-    // For now, we document the intent.
   }
 
   // Recurse into children
@@ -94,7 +86,8 @@ function planSpatialGrouping(node: EnrichedNode, actions: Action[]): void {
   // Find clusters of spatially close nodes
   const clusters = findSpatialClusters(node.children);
 
-  for (const cluster of clusters) {
+  for (let i = 0; i < clusters.length; i++) {
+    const cluster = clusters[i];
     if (cluster.length < 2) continue;
 
     const bounds = computeGroupBounds(cluster);
@@ -102,7 +95,7 @@ function planSpatialGrouping(node: EnrichedNode, actions: Action[]): void {
 
     actions.push({
       type: "create_frame",
-      name: `Group/Cluster`,
+      name: clusters.length === 1 ? "Group/Cluster" : `Group/Cluster-${i + 1}`,
       parentId: node.id,
       x: bounds.x,
       y: bounds.y,

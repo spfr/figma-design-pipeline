@@ -31,7 +31,7 @@ export function parseFigmaUrl(input: string): ParsedFigmaUrl {
 
     // Extract node-id from query params
     const nodeMatch = trimmed.match(NODE_ID_RE);
-    const nodeId = nodeMatch ? nodeMatch[1].replace("-", ":") : undefined;
+    const nodeId = nodeMatch ? nodeMatch[1].replace(/-/g, ":") : undefined;
 
     return { fileKey, nodeId, fileName };
   }
@@ -44,11 +44,4 @@ export function parseFigmaUrl(input: string): ParsedFigmaUrl {
   throw new Error(
     `Cannot parse Figma URL: "${trimmed}". Expected a Figma design URL or file key.`
   );
-}
-
-/**
- * Normalize a node ID from URL format (1817-2817) to Figma API format (1817:2817).
- */
-export function normalizeNodeId(nodeId: string): string {
-  return nodeId.replace(/-/g, ":");
 }

@@ -1,10 +1,5 @@
-import type { ToolContext } from "../../shared/context.js";
-import {
-  handleGetLocalStyles,
-  type LocalPaintStyle,
-  type LocalTextStyle,
-  type LocalEffectStyle,
-} from "./get-local-styles.js";
+import { hexToRgba, rgbaToHex, colorsClose } from "../../shared/color.js";
+import type { FigmaColor } from "../../shared/types.js";
 
 // ─── Input types ─────────────────────────────────────────────────────
 
@@ -27,16 +22,49 @@ interface EffectToken {
   effects: Array<{
     type: "DROP_SHADOW" | "INNER_SHADOW" | "LAYER_BLUR" | "BACKGROUND_BLUR";
     radius?: number;
-    color?: { r: number; g: number; b: number; a: number };
+    color?: FigmaColor;
     offset?: { x: number; y: number };
     spread?: number;
   }>;
+}
+
+/** Style data from Figma (provided by caller — e.g., from official Figma MCP or REST API) */
+interface FigmaPaintStyleEntry {
+  name: string;
+  paints: Array<{ type: string; color?: FigmaColor; opacity?: number }>;
+}
+
+interface FigmaTextStyleEntry {
+  name: string;
+  fontFamily: string;
+  fontWeight: number;
+  fontSize: number;
+  lineHeight?: { value: number; unit: string };
+  letterSpacing?: { value: number; unit: string };
+}
+
+interface FigmaEffectStyleEntry {
+  name: string;
+  effects: Array<{
+    type: string;
+    radius: number;
+    color?: FigmaColor;
+    offset?: { x: number; y: number };
+    spread?: number;
+  }>;
+}
+
+interface FigmaStyleData {
+  paintStyles?: FigmaPaintStyleEntry[];
+  textStyles?: FigmaTextStyleEntry[];
+  effectStyles?: FigmaEffectStyleEntry[];
 }
 
 interface DiffTokensParams {
   colors?: ColorToken[];
   fonts?: FontToken[];
   effects?: EffectToken[];
+  figmaStyles?: FigmaStyleData;
 }
 
 // ─── Result types ────────────────────────────────────────────────────
@@ -60,62 +88,11 @@ interface DiffTokensResult {
   };
 }
 
-// ─── Color comparison helpers ────────────────────────────────────────
-
-const COLOR_TOLERANCE = 1 / 255; // ±1 in 0-255 range
-
-function hexToRgba(hex: string): { r: number; g: number; b: number; a: number } {
-  const clean = hex.replace("#", "");
-  let r: number, g: number, b: number, a = 1;
-
-  if (clean.length === 3) {
-    r = parseInt(clean[0] + clean[0], 16) / 255;
-    g = parseInt(clean[1] + clean[1], 16) / 255;
-    b = parseInt(clean[2] + clean[2], 16) / 255;
-  } else if (clean.length === 6) {
-    r = parseInt(clean.substring(0, 2), 16) / 255;
-    g = parseInt(clean.substring(2, 4), 16) / 255;
-    b = parseInt(clean.substring(4, 6), 16) / 255;
-  } else if (clean.length === 8) {
-    r = parseInt(clean.substring(0, 2), 16) / 255;
-    g = parseInt(clean.substring(2, 4), 16) / 255;
-    b = parseInt(clean.substring(4, 6), 16) / 255;
-    a = parseInt(clean.substring(6, 8), 16) / 255;
-  } else {
-    return { r: 0, g: 0, b: 0, a: 1 };
-  }
-
-  return { r, g, b, a };
-}
-
-function colorsClose(
-  a: { r: number; g: number; b: number; a: number },
-  b: { r: number; g: number; b: number; a: number }
-): boolean {
-  return (
-    Math.abs(a.r - b.r) <= COLOR_TOLERANCE &&
-    Math.abs(a.g - b.g) <= COLOR_TOLERANCE &&
-    Math.abs(a.b - b.b) <= COLOR_TOLERANCE &&
-    Math.abs(a.a - b.a) <= COLOR_TOLERANCE
-  );
-}
-
-function rgbaToHex(c: { r: number; g: number; b: number; a: number }): string {
-  const r = Math.round(c.r * 255).toString(16).padStart(2, "0");
-  const g = Math.round(c.g * 255).toString(16).padStart(2, "0");
-  const b = Math.round(c.b * 255).toString(16).padStart(2, "0");
-  if (c.a < 1) {
-    const a = Math.round(c.a * 255).toString(16).padStart(2, "0");
-    return `#${r}${g}${b}${a}`;
-  }
-  return `#${r}${g}${b}`;
-}
-
 // ─── Diff logic ──────────────────────────────────────────────────────
 
 function diffColor(
   token: ColorToken,
-  figmaStyle: LocalPaintStyle
+  figmaStyle: FigmaPaintStyleEntry
 ): string[] | null {
   const expected = hexToRgba(token.hex);
   const firstPaint = figmaStyle.paints[0];
@@ -133,7 +110,7 @@ function diffColor(
 
 function diffFont(
   token: FontToken,
-  figmaStyle: LocalTextStyle
+  figmaStyle: FigmaTextStyleEntry
 ): string[] | null {
   const diffs: string[] = [];
   if (figmaStyle.fontFamily !== token.fontFamily) {
@@ -160,7 +137,7 @@ function diffFont(
 
 function diffEffect(
   token: EffectToken,
-  figmaStyle: LocalEffectStyle
+  figmaStyle: FigmaEffectStyleEntry
 ): string[] | null {
   const diffs: string[] = [];
 
@@ -214,24 +191,27 @@ function diffEffect(
 
 // ─── Main handler ────────────────────────────────────────────────────
 
-export async function handleDiffTokens(
-  ctx: ToolContext,
+export function handleDiffTokens(
   params: DiffTokensParams
-): Promise<DiffTokensResult> {
-  const { colors = [], fonts = [], effects = [] } = params;
+): DiffTokensResult {
+  const { colors = [], fonts = [], effects = [], figmaStyles } = params;
 
-  // 1. Read existing Figma styles
-  const existing = await handleGetLocalStyles(ctx, {});
+  if (!figmaStyles) {
+    throw new Error(
+      "figmaStyles is required. Provide Figma style data from the official Figma MCP " +
+      "(use_figma with figma.getLocalPaintStyles/getLocalTextStyles/getLocalEffectStyles) " +
+      "or from the REST API (figma_get_styles)."
+    );
+  }
+
+  const paintStyles = figmaStyles.paintStyles ?? [];
+  const textStyles = figmaStyles.textStyles ?? [];
+  const effectStyles = figmaStyles.effectStyles ?? [];
 
   // Index Figma styles by name
-  const paintByName = new Map<string, LocalPaintStyle>();
-  for (const s of existing.paintStyles) paintByName.set(s.name, s);
-
-  const textByName = new Map<string, LocalTextStyle>();
-  for (const s of existing.textStyles) textByName.set(s.name, s);
-
-  const effectByName = new Map<string, LocalEffectStyle>();
-  for (const s of existing.effectStyles) effectByName.set(s.name, s);
+  const paintByName = new Map(paintStyles.map(s => [s.name, s]));
+  const textByName = new Map(textStyles.map(s => [s.name, s]));
+  const effectByName = new Map(effectStyles.map(s => [s.name, s]));
 
   const figmaOnly: DiffEntry[] = [];
   const codeOnly: DiffEntry[] = [];
@@ -243,7 +223,7 @@ export async function handleDiffTokens(
   const matchedTextNames = new Set<string>();
   const matchedEffectNames = new Set<string>();
 
-  // 2. Compare colors
+  // Compare colors
   for (const token of colors) {
     const figmaStyle = paintByName.get(token.name);
     if (!figmaStyle) {
@@ -259,7 +239,7 @@ export async function handleDiffTokens(
     }
   }
 
-  // 3. Compare fonts
+  // Compare fonts
   for (const token of fonts) {
     const figmaStyle = textByName.get(token.name);
     if (!figmaStyle) {
@@ -275,7 +255,7 @@ export async function handleDiffTokens(
     }
   }
 
-  // 4. Compare effects
+  // Compare effects
   for (const token of effects) {
     const figmaStyle = effectByName.get(token.name);
     if (!figmaStyle) {
@@ -291,18 +271,18 @@ export async function handleDiffTokens(
     }
   }
 
-  // 5. Figma-only styles (not in provided tokens)
-  for (const s of existing.paintStyles) {
+  // Figma-only styles (not in provided tokens)
+  for (const s of paintStyles) {
     if (!matchedPaintNames.has(s.name)) {
       figmaOnly.push({ name: s.name, type: "paint" });
     }
   }
-  for (const s of existing.textStyles) {
+  for (const s of textStyles) {
     if (!matchedTextNames.has(s.name)) {
       figmaOnly.push({ name: s.name, type: "text" });
     }
   }
-  for (const s of existing.effectStyles) {
+  for (const s of effectStyles) {
     if (!matchedEffectNames.has(s.name)) {
       figmaOnly.push({ name: s.name, type: "effect" });
     }

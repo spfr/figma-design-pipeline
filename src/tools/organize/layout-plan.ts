@@ -1,5 +1,5 @@
 import type { ToolContext } from "../../shared/context.js";
-import type { EnrichedNode, PlanRecord } from "../../shared/types.js";
+import type { EnrichedNode } from "../../shared/types.js";
 import type { Action } from "../../shared/actions.js";
 import { analyzeLayout, type LayoutSuggestion } from "../../analysis/layout-analyzer.js";
 import { handleGetTree } from "../inspect/get-tree.js";
@@ -13,12 +13,10 @@ export async function handlePlanLayout(
   ctx: ToolContext,
   params: PlanLayoutParams
 ): Promise<{
-  planId: string;
   nodeId: string;
   actionCount: number;
   actions: Action[];
   suggestions: LayoutSuggestion[];
-  plan: PlanRecord;
 }> {
   const { nodeId, scope = "all" } = params;
 
@@ -70,10 +68,7 @@ export async function handlePlanLayout(
     }
   }
 
-  const plan = ctx.stateManager.addPlan("figma_plan_layout", nodeId, actions);
-  await ctx.stateManager.save();
-
-  return { planId: plan.planId, nodeId, actionCount: actions.length, actions, suggestions, plan };
+  return { nodeId, actionCount: actions.length, actions, suggestions };
 }
 
 function collectLeafIds(node: EnrichedNode, ids: Set<string>): void {

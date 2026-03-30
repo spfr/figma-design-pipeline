@@ -22,12 +22,6 @@ Use this checklist before making the repository public or cutting a release.
 - Run `npm pack`
 - Inspect the tarball contents to confirm only intended files are shipped
 
-## Figma Plugin Review
-
-- Confirm the manifest only requests the local network access required for the bridge.
-- Confirm plugin listing copy explains that write workflows depend on a local MCP bridge.
-- Confirm the plugin clearly states that the workflow runs locally and does not imply any cloud relay.
-
 ## Docs Review
 
 - Verify the GitHub Pages landing page still matches the current install flow.

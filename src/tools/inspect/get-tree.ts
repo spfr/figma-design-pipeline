@@ -59,7 +59,6 @@ export async function handleGetTree(
 
   // Cache the result
   ctx.snapshotCache.set(nodeId, enriched);
-  ctx.stateManager.setRootNode(nodeId);
 
   return { nodeId, tree: enriched, fromCache: false };
 }

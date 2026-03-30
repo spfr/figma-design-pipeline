@@ -6,6 +6,7 @@ import type {
   EnrichedNode,
 } from "../../shared/types.js";
 import { isGenericName, hasNumberedSuffix } from "../../shared/naming.js";
+import { hexToRgba } from "../../shared/color.js";
 import { handleGetTree } from "./get-tree.js";
 
 interface AuditParams {
@@ -251,41 +252,30 @@ function checkAccessibility(node: EnrichedNode, violations: AuditViolation[]): v
   // WCAG contrast check — text over solid background
   if (node.type === "TEXT") {
     const fgToken = node.tokens.find(
-      (t) => t.type === "color" && typeof t.raw === "string" && t.raw.startsWith("rgba")
+      (t) => t.type === "color" && typeof t.raw === "string" && t.raw.startsWith("#")
     );
-    // Walk up to find parent background color
-    // (token-based heuristic — uses the node's own tokens for parent bg)
-    // The enriched tree doesn't carry parent reference, so we check for
-    // a color token pair (foreground + background) on the text node itself.
     if (fgToken && typeof fgToken.raw === "string") {
-      const fg = parseRgba(fgToken.raw);
-      if (fg) {
-        // Look for low-luminance foreground (dark text) or high-luminance (light text)
-        // Basic heuristic: if the text has a very low-contrast fill, flag it
-        const fgLum = relativeLuminance(fg.r, fg.g, fg.b);
-        // We can't always know the background without parent traversal,
-        // but flag near-invisible text (very low opacity or near-transparent)
-        if (fg.a < 0.3) {
-          violations.push({
-            nodeId: node.id,
-            nodeName: node.name,
-            category: "accessibility",
-            severity: "warning",
-            message: `Text opacity is very low (${(fg.a * 100).toFixed(0)}%) — may be invisible`,
-            suggestion: "Ensure text has sufficient contrast against its background (WCAG AA: 4.5:1)",
-          });
-        }
-        // Flag light-on-light or dark-on-dark heuristic
-        if (fgLum > 0.9) {
-          violations.push({
-            nodeId: node.id,
-            nodeName: node.name,
-            category: "accessibility",
-            severity: "info",
-            message: `Very light text color (luminance: ${fgLum.toFixed(2)}) — ensure sufficient background contrast`,
-            suggestion: "WCAG AA requires 4.5:1 for normal text, 3:1 for large text (18px+ or 14px+ bold)",
-          });
-        }
+      const fg = hexToRgba(fgToken.raw);
+      const fgLum = relativeLuminance(fg.r, fg.g, fg.b);
+      if (fg.a < 0.3) {
+        violations.push({
+          nodeId: node.id,
+          nodeName: node.name,
+          category: "accessibility",
+          severity: "warning",
+          message: `Text opacity is very low (${(fg.a * 100).toFixed(0)}%) — may be invisible`,
+          suggestion: "Ensure text has sufficient contrast against its background (WCAG AA: 4.5:1)",
+        });
+      }
+      if (fgLum > 0.9) {
+        violations.push({
+          nodeId: node.id,
+          nodeName: node.name,
+          category: "accessibility",
+          severity: "info",
+          message: `Very light text color (luminance: ${fgLum.toFixed(2)}) — ensure sufficient background contrast`,
+          suggestion: "WCAG AA requires 4.5:1 for normal text, 3:1 for large text (18px+ or 14px+ bold)",
+        });
       }
     }
   }
@@ -310,14 +300,6 @@ function checkAccessibility(node: EnrichedNode, violations: AuditViolation[]): v
 }
 
 // ─── Color Helpers ────────────────────────────────────────────────────
-
-function parseRgba(raw: string): { r: number; g: number; b: number; a: number } | null {
-  const m = raw.match(/rgba?\(([^)]+)\)/);
-  if (!m) return null;
-  const parts = m[1].split(",").map((s) => parseFloat(s.trim()));
-  if (parts.length < 3) return null;
-  return { r: parts[0] / 255, g: parts[1] / 255, b: parts[2] / 255, a: parts[3] ?? 1 };
-}
 
 function relativeLuminance(r: number, g: number, b: number): number {
   const toLinear = (c: number) => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));

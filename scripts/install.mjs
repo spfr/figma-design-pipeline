@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -13,12 +13,8 @@ const repoSkillDir = resolve(repoRoot, "skills", "figma-design-pipeline");
 const skillDir = existsSync(bundledSkillDir) ? bundledSkillDir : repoSkillDir;
 const distDir = resolve(packageDir, "dist");
 const serverBundlePath = resolve(distDir, "index.js");
-const pluginSourceDir = resolve(distDir, "plugin");
-const pluginManifestPath = resolve(pluginSourceDir, "manifest.json");
-const pluginCodePath = resolve(pluginSourceDir, "code.js");
-const pluginInstallDir = resolve(os.homedir(), ".figma-design-pipeline", "plugin");
-const desktopBundlePath = resolve(distDir, "figma-design-pipeline.mcpb");
 const codexConfigPath = resolve(os.homedir(), ".codex", "config.toml");
+const codexSkillDir = resolve(os.homedir(), ".codex", "skills", "figma-design-pipeline");
 const agentsSkillDir = resolve(os.homedir(), ".agents", "skills", "figma-design-pipeline");
 const geminiSkillDir = resolve(os.homedir(), ".gemini", "skills", "figma-design-pipeline");
 const claudeSkillDir = resolve(os.homedir(), ".claude", "skills", "figma-design-pipeline");
@@ -51,7 +47,7 @@ for (let i = 0; i < args.length; i++) {
   }
 }
 
-const knownClients = new Set(["all", "claude", "claude-code", "claude-desktop", "gemini", "gemini-cli", "codex", "codex-cli"]);
+const knownClients = new Set(["all", "claude", "claude-code", "gemini", "gemini-cli", "codex", "codex-cli"]);
 if (!knownClients.has(options.client)) {
   console.error(`Unsupported client: ${options.client}`);
   printHelp();
@@ -59,8 +55,6 @@ if (!knownClients.has(options.client)) {
 }
 
 ensureBuildArtifacts();
-
-deployPluginBundle();
 
 const installed = [];
 
@@ -88,14 +82,14 @@ if (matches(options.client, "gemini", "gemini-cli")) {
 }
 
 if (matches(options.client, "codex", "codex-cli")) {
+  if (!options.skipSkill) {
+    linkSkill(skillDir, codexSkillDir);
+    installed.push(`Codex skill -> ${codexSkillDir}`);
+  }
   if (!options.skipMcp) {
     installCodexMcp();
     installed.push(`Codex MCP server -> ${codexConfigPath}`);
   }
-}
-
-if (matches(options.client, "claude-desktop")) {
-  installed.push(`Claude Desktop bundle -> ${desktopBundlePath}`);
 }
 
 console.log("");
@@ -104,23 +98,25 @@ for (const line of installed) {
   console.log(`- ${line}`);
 }
 console.log("");
-console.log(`Figma plugin manifest: ${join(pluginInstallDir, "manifest.json")}`);
-console.log(`Claude Desktop bundle: ${desktopBundlePath}`);
-console.log("");
 console.log("Next steps:");
-console.log("- Set FIGMA_ACCESS_TOKEN in your client config or shell/profile.");
-console.log("- In Figma desktop: Plugins > Development > Import plugin from manifest..., then choose the path above.");
-console.log("- For Claude Desktop, install the .mcpb bundle from Settings > Extensions.");
+console.log("- All major CLIs (Claude Code, Codex, Gemini) support the official Figma MCP via OAuth.");
+console.log("- FIGMA_ACCESS_TOKEN is only needed for this server's REST API analysis tools.");
+console.log("- Use the official Figma MCP for full read/write Figma access — no token needed.");
 
 function printHelp() {
   console.log(`Usage: spfr-figma-design-pipeline-install [options]
 
 Options:
-  --client <name>   all | claude | claude-code | claude-desktop | gemini | gemini-cli | codex | codex-cli
+  --client <name>   all | claude | claude-code | gemini | gemini-cli | codex | codex-cli
   --skip-build      Reuse existing dist/ artifacts
   --skip-skill      Skip skill symlink installation
   --skip-mcp        Skip MCP client configuration
   --help            Show this help
+
+All major CLIs (Claude Code, Codex, Gemini) support the official Figma MCP
+via OAuth — no personal access token needed for Figma reads and writes.
+
+FIGMA_ACCESS_TOKEN is only needed for this server's REST API analysis tools.
 `);
 }
 
@@ -136,35 +132,13 @@ function runBuildStep(scriptPath) {
 }
 
 function ensureBuildArtifacts() {
-  const requireDesktopBundle = matches(options.client, "claude-desktop");
   const needsServer = !options.skipMcp && matches(options.client, "claude", "claude-code", "gemini", "gemini-cli", "codex", "codex-cli");
-  const needsPlugin = true;
 
   if (needsServer) {
     ensureArtifact({
       path: serverBundlePath,
       script: resolve(packageDir, "scripts", "build-server.mjs"),
       label: "MCP server bundle",
-    });
-  }
-
-  if (needsPlugin) {
-    ensureArtifact({
-      path: pluginCodePath,
-      script: resolve(packageDir, "scripts", "build-plugin.mjs"),
-      label: "Figma plugin bundle",
-    });
-    ensureArtifact({
-      path: pluginManifestPath,
-      label: "Figma plugin manifest",
-    });
-  }
-
-  if (requireDesktopBundle) {
-    ensureArtifact({
-      path: desktopBundlePath,
-      script: resolve(packageDir, "scripts", "package-desktop-extension.mjs"),
-      label: "Claude Desktop bundle",
     });
   }
 }
@@ -210,12 +184,6 @@ function linkSkill(source, target) {
   }
 
   symlinkSync(source, target, "dir");
-}
-
-function deployPluginBundle() {
-  ensureDir(dirname(pluginInstallDir));
-  rmSync(pluginInstallDir, { recursive: true, force: true });
-  cpSync(pluginSourceDir, pluginInstallDir, { recursive: true });
 }
 
 function installClaudeCodeMcp() {

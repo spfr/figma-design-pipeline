@@ -16,6 +16,5 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/plugin/**"]
+  "include": ["src/**/*.ts"]
 }

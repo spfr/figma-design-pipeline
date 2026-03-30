@@ -1,4 +1,5 @@
 import type { FigmaRawNode, FigmaColor, FigmaPaint, DesignToken } from "../shared/types.js";
+import { rgbaToHex } from "../shared/color.js";
 
 export interface ExtractedTokens {
   colors: DesignToken[];
@@ -30,13 +31,14 @@ export function extractTokens(
   const seenSpacing = new Set<number>();
   const seenRadii = new Set<number>();
   const seenOpacities = new Set<number>();
+  const typeSet = new Set(types);
 
   walkForTokens(root, (node) => {
     // Colors
-    if (types.includes("color")) {
+    if (typeSet.has("color")) {
       for (const fill of node.fills || []) {
         if (fill.type === "SOLID" && fill.color) {
-          const hex = colorToHex(fill.color);
+          const hex = rgbaToHex(fill.color);
           if (!seenColors.has(hex)) {
             seenColors.add(hex);
             result.colors.push({
@@ -51,7 +53,7 @@ export function extractTokens(
     }
 
     // Fonts
-    if (types.includes("font") && node.style) {
+    if (typeSet.has("font") && node.style) {
       const fontKey = `${node.style.fontFamily || ""}|${node.style.fontSize || ""}|${node.style.fontWeight || ""}`;
       if (fontKey !== "||" && !seenFonts.has(fontKey)) {
         seenFonts.add(fontKey);
@@ -65,7 +67,7 @@ export function extractTokens(
     }
 
     // Spacing (from auto-layout or padding)
-    if (types.includes("spacing")) {
+    if (typeSet.has("spacing")) {
       for (const val of [
         node.itemSpacing,
         node.paddingTop,
@@ -85,7 +87,7 @@ export function extractTokens(
     }
 
     // Border radius
-    if (types.includes("radius")) {
+    if (typeSet.has("radius")) {
       const r = node.cornerRadius;
       if (r !== undefined && r > 0 && !seenRadii.has(r)) {
         seenRadii.add(r);
@@ -98,7 +100,7 @@ export function extractTokens(
     }
 
     // Shadows
-    if (types.includes("shadow")) {
+    if (typeSet.has("shadow")) {
       for (const effect of node.effects || []) {
         if (effect.type === "DROP_SHADOW" && effect.visible) {
           result.shadows.push({
@@ -111,7 +113,7 @@ export function extractTokens(
     }
 
     // Opacity
-    if (types.includes("opacity")) {
+    if (typeSet.has("opacity")) {
       if (node.opacity !== undefined && node.opacity < 1 && !seenOpacities.has(node.opacity)) {
         seenOpacities.add(node.opacity);
         result.opacities.push({
@@ -138,7 +140,7 @@ export function extractNodeTokens(node: FigmaRawNode): DesignToken[] {
     if (fill.type === "SOLID" && fill.color) {
       tokens.push({
         type: "color",
-        raw: colorToHex(fill.color),
+        raw: rgbaToHex(fill.color),
         tailwind: mapColorToTailwind(fill.color),
       });
     }
@@ -165,15 +167,8 @@ export function extractNodeTokens(node: FigmaRawNode): DesignToken[] {
 
 // ─── Tailwind Mapping Helpers ────────────────────────────────────────
 
-function colorToHex(c: FigmaColor): string {
-  const r = Math.round(c.r * 255);
-  const g = Math.round(c.g * 255);
-  const b = Math.round(c.b * 255);
-  return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
-}
-
 function mapColorToTailwind(c: FigmaColor): string {
-  const hex = colorToHex(c);
+  const hex = rgbaToHex(c);
 
   // Common color mappings
   const colorMap: Record<string, string> = {

@@ -195,55 +195,6 @@ export interface AuditResult {
   summary: Record<AuditCheckCategory, { errors: number; warnings: number; info: number }>;
 }
 
-// ─── Pipeline State ──────────────────────────────────────────────────
-
-export type PipelinePhase =
-  | "idle"
-  | "inspecting"
-  | "planning"
-  | "applying"
-  | "verifying"
-  | "generating";
-
-export interface PlanRecord {
-  planId: string;
-  toolName: string;
-  nodeId: string;
-  actions: import("./actions").Action[];
-  createdAt: string;
-  status: "pending" | "applied" | "rolled-back";
-}
-
-export interface BatchRecord {
-  batchId: string;
-  planId: string;
-  actions: import("./actions").Action[];
-  inverseActions: import("./actions").Action[];
-  appliedAt: string;
-  results: ActionResult[];
-  status: "success" | "partial" | "failed" | "rolled-back";
-}
-
-export interface ActionResult {
-  actionIndex: number;
-  type: string;
-  status: "applied" | "failed" | "skipped";
-  nodeId?: string;
-  before?: unknown;
-  after?: unknown;
-  error?: string;
-}
-
-export interface PipelineState {
-  fileKey: string;
-  rootNodeId?: string;
-  phase: PipelinePhase;
-  plans: PlanRecord[];
-  batches: BatchRecord[];
-  snapshotVersion: number;
-  lastUpdated: string;
-}
-
 // ─── Component Registry Types ────────────────────────────────────────
 
 export interface FigmaSignature {
@@ -368,22 +319,6 @@ export const planComponentsInputSchema = z.object({
   minOccurrences: z.number().int().min(2).default(2).describe("Min repetitions to extract"),
 });
 
-export const applyBatchInputSchema = z.object({
-  planId: z.string().optional().describe("Plan ID to apply (from a plan tool)"),
-  actions: z.array(z.any()).optional().describe("Direct actions array (alternative to planId)"),
-  dryRun: z.boolean().default(true).describe("Preview without applying (default: true)"),
-});
-
-export const verifyInputSchema = z.object({
-  figmaUrl: figmaUrlField,
-  nodeId: z.string().optional().describe("Root node ID to verify"),
-  batchId: z.string().optional().describe("Specific batch to verify against"),
-});
-
-export const rollbackInputSchema = z.object({
-  batchId: z.string().describe("Batch ID to roll back"),
-});
-
 export const mapComponentsInputSchema = z.object({
   figmaUrl: figmaUrlField,
   nodeId: z.string().optional().describe("Root node ID to map"),
@@ -411,6 +346,8 @@ export const generateSchemaInputSchema = z.object({
 });
 
 export const exportTokensInputSchema = z.object({
+  figmaUrl: figmaUrlField,
+  nodeId: z.string().optional().describe("Root node ID to export tokens from. Auto-extracted from figmaUrl if provided."),
   format: z
     .enum(["tailwind", "css", "json"])
     .default("tailwind")
@@ -418,13 +355,7 @@ export const exportTokensInputSchema = z.object({
 });
 
 export const exportImagesInputSchema = z.object({
-  figmaUrl: z
-    .string()
-    .optional()
-    .describe(
-      "Figma design URL (e.g., 'https://www.figma.com/design/ABC123/File-Name?node-id=1817:2817'). " +
-      "Extracts file key and node ID automatically. Once set, persists for the session."
-    ),
+  figmaUrl: figmaUrlField,
   nodeIds: z.array(z.string()).min(1).describe("Node IDs to export as images"),
   format: z.enum(["png", "svg", "jpg", "pdf"]).default("png").describe("Image format"),
   scale: z.number().min(0.5).max(4).default(2).describe("Export scale (0.5x to 4x)"),
@@ -461,15 +392,7 @@ export const getStylesInputSchema = z.object({
   figmaUrl: figmaUrlField,
 });
 
-// ─── Style Sync Tool Schemas ────────────────────────────────────────
-
-export const getLocalStylesInputSchema = z.object({
-  figmaUrl: figmaUrlField,
-  styleTypes: z
-    .array(z.enum(["PAINT", "TEXT", "EFFECT"]))
-    .optional()
-    .describe("Which style types to return. Omit for all."),
-});
+// ─── Token Comparison Schemas ───────────────────────────────────────
 
 const colorTokenSchema = z.object({
   name: z.string().describe("Style name (use '/' for folders, e.g. 'Brand/Primary')"),
@@ -510,20 +433,39 @@ const effectTokenSchema = z.object({
   ),
 });
 
-export const pushTokensInputSchema = z.object({
-  figmaUrl: figmaUrlField,
-  colors: z.array(colorTokenSchema).default([]).describe("Color tokens to create as paint styles"),
-  fonts: z.array(fontTokenSchema).default([]).describe("Typography tokens to create as text styles"),
-  effects: z.array(effectTokenSchema).default([]).describe("Effect tokens to create as effect styles"),
-  onConflict: z
-    .enum(["skip", "rename"])
-    .default("skip")
-    .describe("What to do when a style with the same name exists: skip or rename with suffix"),
-});
+const figmaStyleDataSchema = z.object({
+  paintStyles: z.array(z.object({
+    name: z.string(),
+    paints: z.array(z.object({
+      type: z.string(),
+      color: z.object({ r: z.number(), g: z.number(), b: z.number(), a: z.number() }).optional(),
+      opacity: z.number().optional(),
+    })),
+  })).optional(),
+  textStyles: z.array(z.object({
+    name: z.string(),
+    fontFamily: z.string(),
+    fontWeight: z.number(),
+    fontSize: z.number(),
+    lineHeight: z.object({ value: z.number(), unit: z.string() }).optional(),
+    letterSpacing: z.object({ value: z.number(), unit: z.string() }).optional(),
+  })).optional(),
+  effectStyles: z.array(z.object({
+    name: z.string(),
+    effects: z.array(z.object({
+      type: z.string(),
+      radius: z.number(),
+      color: z.object({ r: z.number(), g: z.number(), b: z.number(), a: z.number() }).optional(),
+      offset: z.object({ x: z.number(), y: z.number() }).optional(),
+      spread: z.number().optional(),
+    })),
+  })).optional(),
+}).describe("Figma style data from the official Figma MCP (use_figma) or REST API (figma_get_styles)");
 
 export const diffTokensInputSchema = z.object({
   figmaUrl: figmaUrlField,
-  colors: z.array(colorTokenSchema).default([]).describe("Color tokens to compare"),
-  fonts: z.array(fontTokenSchema).default([]).describe("Typography tokens to compare"),
-  effects: z.array(effectTokenSchema).default([]).describe("Effect tokens to compare"),
+  colors: z.array(colorTokenSchema).default([]).describe("Color tokens from your code to compare"),
+  fonts: z.array(fontTokenSchema).default([]).describe("Typography tokens from your code to compare"),
+  effects: z.array(effectTokenSchema).default([]).describe("Effect tokens from your code to compare"),
+  figmaStyles: figmaStyleDataSchema.describe("Figma style data to compare against. Get this from the official Figma MCP or REST API."),
 });

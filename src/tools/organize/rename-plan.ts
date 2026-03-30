@@ -1,5 +1,5 @@
 import type { ToolContext } from "../../shared/context.js";
-import type { EnrichedNode, PlanRecord } from "../../shared/types.js";
+import type { EnrichedNode } from "../../shared/types.js";
 import type { Action } from "../../shared/actions.js";
 import { isGenericName, proposeSemantic, deduplicateNames, toSlashName } from "../../shared/naming.js";
 import { handleGetTree } from "../inspect/get-tree.js";
@@ -13,7 +13,7 @@ interface PlanNamingParams {
 export async function handlePlanNaming(
   ctx: ToolContext,
   params: PlanNamingParams
-): Promise<{ planId: string; nodeId: string; actionCount: number; actions: Action[]; plan: PlanRecord }> {
+): Promise<{ nodeId: string; actionCount: number; actions: Action[] }> {
   const { nodeId, convention = "slash", overrides = [] } = params;
 
   const { tree } = await handleGetTree(ctx, { nodeId, includeStyles: false });
@@ -32,15 +32,10 @@ export async function handlePlanNaming(
     name: r.name,
   }));
 
-  const plan = ctx.stateManager.addPlan("figma_plan_naming", nodeId, actions);
-  await ctx.stateManager.save();
-
   return {
-    planId: plan.planId,
     nodeId,
     actionCount: actions.length,
     actions,
-    plan,
   };
 }
 

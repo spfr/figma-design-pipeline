@@ -4,71 +4,67 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SPFR Figma Design Pipeline</title>
-    <meta name="description" content="Open-source MCP pipeline for Figma: inspect designs, apply safe mutations, sync tokens, and generate code from Claude, Codex, Gemini, and Figma desktop.">
+    <meta name="description" content="AI design assistant for Figma. Analyze websites, create design systems, design pages, sync tokens, and generate code from Claude Code, Codex, and Gemini CLI.">
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
     <main class="page">
       <section class="hero">
-        <p class="eyebrow">Open Source Figma + MCP</p>
+        <p class="eyebrow">AI Design Assistant</p>
         <h1>SPFR Figma Design Pipeline</h1>
-        <p class="lede">Inspect designs, plan changes, execute safe mutations, sync tokens, and generate code through a local MCP workflow built for Claude, Codex, Gemini, and Figma desktop.</p>
+        <p class="lede">Analyze websites, create design systems, design pages and dashboards, sync tokens, and generate production code from your terminal. Works with Claude Code, Codex CLI, and Gemini CLI.</p>
         <div class="actions">
-          <a class="button primary" href="../README.md">Read the README</a>
-          <a class="button" href="../PUBLISHING.md">Publishing Guide</a>
-          <a class="button" href="../SECURITY.md">Security</a>
+          <a class="button primary" href="https://github.com/spfr/figma-design-pipeline">GitHub</a>
+          <a class="button" href="https://www.npmjs.com/package/@spicefactory/figma-design-pipeline">npm</a>
         </div>
       </section>
 
       <section class="grid">
         <article class="card">
-          <h2>One-Line MCP Install</h2>
+          <h2>One-Line Install</h2>
           <pre><code>npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all</code></pre>
-          <p>Registers the MCP server for Claude, Gemini, and Codex, installs the thin bundled skill, packages the Claude Desktop bundle, and deploys the local Figma plugin manifest.</p>
+          <p>Registers the MCP server and installs the design assistant skill for Claude Code, Gemini CLI, and Codex CLI.</p>
         </article>
 
         <article class="card">
-          <h2>Figma Plugin</h2>
-          <p>The Figma-side executor is designed to be published in the Figma Community so users can find and install it directly in Figma.</p>
-          <p>It only connects to a local bridge on <code>127.0.0.1</code>. Read-only inspection and planning still work without the plugin.</p>
+          <h2>No Plugin Needed</h2>
+          <p>Uses the official Figma MCP for all reads and writes via OAuth. No personal access token needed. No plugin installation. Just install and start designing.</p>
         </article>
 
         <article class="card">
-          <h2>Context-Efficient Skill</h2>
-          <p>The bundled skill is intentionally thin. It starts with inspection and loads only the workflow resource needed for the task: inspect, mutate, tokens, or codegen.</p>
+          <h2>Design Intelligence</h2>
+          <p>Structured inspection, auditing, token extraction, planning, and code generation. The AI knows how to create design systems, dashboards, landing pages, and more.</p>
         </article>
       </section>
 
       <section class="split">
         <article class="panel">
-          <h2>Install Targets</h2>
+          <h2>What You Can Do</h2>
           <ul>
-            <li><code>--client claude</code> for Claude Code</li>
-            <li><code>--client claude-desktop</code> for the Claude Desktop bundle</li>
-            <li><code>--client gemini</code> for Gemini CLI and bundled skill</li>
-            <li><code>--client codex</code> for Codex CLI config</li>
+            <li>"Look at this website and create a design system"</li>
+            <li>"Design me an analytics dashboard"</li>
+            <li>"Sync design tokens to our Tailwind config"</li>
+            <li>"Generate React components from this Figma page"</li>
           </ul>
         </article>
 
         <article class="panel">
-          <h2>Security Model</h2>
+          <h2>How It Works</h2>
           <ul>
-            <li>No API tokens are committed in the repo.</li>
-            <li>Tokens are passed through client config or desktop bundle user config.</li>
-            <li>The plugin talks only to a localhost bridge.</li>
-            <li>Logs and issues should always redact tokens before sharing.</li>
+            <li>Official Figma MCP handles Figma reads/writes (OAuth)</li>
+            <li>This MCP server provides design intelligence (analysis, planning, codegen)</li>
+            <li>Browser tools capture and analyze websites</li>
+            <li>The design assistant skill orchestrates everything</li>
           </ul>
         </article>
       </section>
 
       <section class="panel">
-        <h2>Release Checklist</h2>
+        <h2>Quick Start</h2>
         <ol>
-          <li>Run <code>npm run check</code>, <code>npm test</code>, and <code>npm pack</code>.</li>
-          <li>Review <a href="../SECURITY.md">SECURITY.md</a> and the release-hardening checklist.</li>
-          <li>Publish the npm package.</li>
-          <li>Publish the Figma plugin listing in the Figma Community.</li>
-          <li>Verify the public install command from the published package.</li>
+          <li>Install: <code>npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all</code></li>
+          <li>Open Claude Code, Codex CLI, or Gemini CLI</li>
+          <li>Start designing: "Create a design system for my project"</li>
         </ol>
       </section>
     </main>
