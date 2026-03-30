@@ -43,7 +43,10 @@ function connect() {
     scheduleReconnect();
   };
 
-  ws.onerror = function() {};
+  ws.onerror = function() {
+    el.textContent = "Connection error — retrying...";
+    el.style.color = "#c00";
+  };
 }
 
 function scheduleReconnect() {

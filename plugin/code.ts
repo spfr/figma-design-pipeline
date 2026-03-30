@@ -66,6 +66,12 @@ function weightToFontStyle(weight: number): string {
 
 // ─── Snapshot ───────────────────────────────────────────────────
 
+/** Safely serialize a value that might be figma.mixed (a Symbol that breaks JSON.stringify). */
+function safeSerialize(value: unknown): unknown {
+  if (typeof value === "symbol") return "mixed";
+  try { return JSON.parse(JSON.stringify(value)); } catch { return "mixed"; }
+}
+
 function captureSnapshot(node: SceneNode): Record<string, unknown> {
   const snap: Record<string, unknown> = {
     id: node.id,
@@ -74,12 +80,15 @@ function captureSnapshot(node: SceneNode): Record<string, unknown> {
   };
   if ("x" in node) { snap.x = node.x; snap.y = node.y; }
   if ("width" in node) { snap.width = node.width; snap.height = node.height; }
-  if ("fills" in node) snap.fills = JSON.parse(JSON.stringify(node.fills));
-  if ("opacity" in node) snap.opacity = node.opacity;
+  if ("fills" in node) snap.fills = safeSerialize((node as GeometryMixin).fills);
+  if ("opacity" in node) snap.opacity = (node as BlendMixin).opacity;
   if ("visible" in node) snap.visible = node.visible;
   if ("layoutMode" in node) snap.layoutMode = (node as FrameNode).layoutMode;
   if ("characters" in node) snap.characters = (node as TextNode).characters;
-  if ("cornerRadius" in node) snap.cornerRadius = (node as FrameNode).cornerRadius;
+  if ("cornerRadius" in node) {
+    const cr = (node as FrameNode).cornerRadius;
+    snap.cornerRadius = typeof cr === "symbol" ? "mixed" : cr;
+  }
   return snap;
 }
 
@@ -209,17 +218,17 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
     case "set_fills": {
       const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
-      const before = { fills: JSON.parse(JSON.stringify(node.fills)) };
+      const before = { fills: safeSerialize(node.fills) };
       node.fills = action.fills as Paint[];
-      return { before, after: { fills: JSON.parse(JSON.stringify(node.fills)) } };
+      return { before, after: { fills: safeSerialize(node.fills) } };
     }
 
     case "set_strokes": {
       const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
-      const before = { strokes: JSON.parse(JSON.stringify(node.strokes)) };
+      const before = { strokes: safeSerialize(node.strokes), strokeWeight: safeSerialize((node as FrameNode).strokeWeight) };
       node.strokes = action.strokes as Paint[];
       if (action.strokeWeight !== undefined) (node as FrameNode).strokeWeight = action.strokeWeight as number;
-      return { before, after: { strokes: JSON.parse(JSON.stringify(node.strokes)) } };
+      return { before, after: { strokes: safeSerialize(node.strokes) } };
     }
 
     case "set_effects": {
@@ -261,8 +270,20 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
     case "set_text_content": {
       const node = findSceneNode(action.nodeId as string) as TextNode;
-      const font = node.fontName as FontName;
-      await ensureFonts([{ family: font.family, style: font.style }]);
+      // Handle mixed fonts: load all unique fonts in the text range
+      const fontName = node.fontName;
+      if (typeof fontName === "symbol") {
+        // Mixed fonts — load all unique fonts by scanning segments
+        const len = node.characters.length;
+        const seen = new Set<string>();
+        for (let i = 0; i < len; i++) {
+          const f = node.getRangeFontName(i, i + 1) as FontName;
+          const key = `${f.family}|${f.style}`;
+          if (!seen.has(key)) { seen.add(key); await ensureFonts([f]); }
+        }
+      } else {
+        await ensureFonts([{ family: fontName.family, style: fontName.style }]);
+      }
       const before = { characters: node.characters };
       node.characters = action.characters as string;
       return { before, after: { characters: node.characters } };
@@ -270,11 +291,14 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
     case "set_text_style": {
       const node = findSceneNode(action.nodeId as string) as TextNode;
-      const family = (action.fontFamily as string) || (node.fontName as FontName).family;
+      const currentFont = node.fontName;
+      const currentFamily = typeof currentFont === "symbol" ? "Inter" : currentFont.family;
+      const currentStyle = typeof currentFont === "symbol" ? "Regular" : currentFont.style;
+      const family = (action.fontFamily as string) || currentFamily;
       const weight = action.fontWeight as number | undefined;
-      const style = weight ? weightToFontStyle(weight) : (node.fontName as FontName).style;
+      const style = weight ? weightToFontStyle(weight) : currentStyle;
       await ensureFonts([{ family, style }]);
-      const before = { fontSize: node.fontSize, fontName: node.fontName };
+      const before = { fontSize: node.fontSize, fontName: typeof currentFont === "symbol" ? "mixed" : currentFont };
       node.fontName = { family, style };
       if (action.fontSize !== undefined) node.fontSize = action.fontSize as number;
       if (action.lineHeight !== undefined) node.lineHeight = { value: action.lineHeight as number, unit: "PIXELS" };
@@ -291,9 +315,14 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
     case "create_component_set": {
       const ids = (action.componentIds as string[]).map(resolveId);
-      const comps = ids.map(id => figma.getNodeById(id) as ComponentNode);
-      const parent = comps[0].parent as FrameNode;
-      const set = figma.combineAsVariants(comps, parent);
+      const comps = ids.map(id => {
+        const node = figma.getNodeById(id);
+        if (!node || node.type !== "COMPONENT") throw new Error(`Node ${id} is not a component`);
+        return node as ComponentNode;
+      });
+      const parent = comps[0].parent;
+      if (!parent || !("appendChild" in parent)) throw new Error("Component has no valid parent for variant set");
+      const set = figma.combineAsVariants(comps, parent as FrameNode);
       set.name = action.name as string;
       return { after: { id: set.id, name: set.name }, newNodeId: set.id };
     }
@@ -461,11 +490,15 @@ async function processBatch(batch: Batch): Promise<BatchResult> {
     }
   }
 
-  // Rollback on error if requested (only undo actual mutations, not dry-run plans)
+  // Rollback: undo exactly the mutations from THIS batch, not user history
+  let rollbackApplied = false;
   if (batch.rollbackOnError && failed > 0 && mutated > 0) {
+    // figma.triggerUndo() undoes one operation at a time from the undo stack.
+    // We only undo the count of mutations we made in this batch.
     for (let i = 0; i < mutated; i++) {
       figma.triggerUndo();
     }
+    rollbackApplied = true;
   }
 
   return {
@@ -475,6 +508,7 @@ async function processBatch(batch: Batch): Promise<BatchResult> {
     results,
     nodeIdMap: Object.fromEntries(refMap),
     summary: { total: batch.actions.length, applied, failed, skipped },
+    ...(rollbackApplied ? { rollbackApplied: true } : {}),
   };
 }
 
@@ -509,6 +543,10 @@ figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
 
     if (data.type === "batch") {
       const batch = data as unknown as Batch;
+      if (!batch.batchId || !Array.isArray(batch.actions)) {
+        console.error("[plugin] Malformed batch payload, ignoring");
+        return;
+      }
       try {
         const result = await processBatch(batch);
         figma.ui.postMessage({ type: "send_to_bridge", data: { type: "batch_result", ...result } });
@@ -519,9 +557,7 @@ figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
           data: { type: "batch_result", batchId: batch.batchId, success: false, error: message, results: [], nodeIdMap: {}, summary: { total: 0, applied: 0, failed: 0, skipped: 0 } },
         });
       }
-    }
-
-    if (data.type === "ping") {
+    } else if (data.type === "ping") {
       figma.ui.postMessage({
         type: "send_to_bridge",
         data: { type: "pong", pageId: figma.currentPage.id, pageName: figma.currentPage.name },

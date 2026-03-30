@@ -38,6 +38,8 @@
     "bin",
     "dist/index.js",
     "plugin/dist",
+    "scripts/build-server.mjs",
+    "scripts/build-plugin.mjs",
     "scripts/install.mjs",
     "skill",
     "PUBLISHING.md",

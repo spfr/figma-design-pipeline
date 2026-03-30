@@ -71,7 +71,6 @@ if (matches(options.client, "claude", "claude-code")) {
 
 if (matches(options.client, "gemini", "gemini-cli")) {
   if (!options.skipSkill) {
-    linkSkill(skillDir, agentsSkillDir);
     linkSkill(skillDir, geminiSkillDir);
     installed.push(`Gemini skill -> ${geminiSkillDir}`);
   }
@@ -245,9 +244,11 @@ function installCodexMcp() {
 function replaceManagedBlock(input, name, block) {
   const start = `# BEGIN ${name}`;
   const end = `# END ${name}`;
-  const pattern = new RegExp(`${escapeRegex(start)}[\\s\\S]*?${escapeRegex(end)}\\n?`, "g");
-  const stripped = input.replace(pattern, "").trimEnd();
-  return `${stripped ? `${stripped}\n\n` : ""}${block}`;
+  const pattern = new RegExp(`${escapeRegex(start)}[\\s\\S]*?${escapeRegex(end)}\\n?`);
+  const stripped = input.replace(pattern, "");
+  // Ensure single blank line before new block, preserve rest of file
+  const trimmed = stripped.replace(/\n{3,}$/, "\n\n");
+  return `${trimmed.endsWith("\n\n") ? trimmed : trimmed.endsWith("\n") ? trimmed + "\n" : trimmed + "\n\n"}${block}`;
 }
 
 function escapeRegex(value) {

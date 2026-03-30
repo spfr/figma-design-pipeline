@@ -82,7 +82,7 @@ Create a new Figma file called "My Design System" with a color palette
 using blue as the primary color and a 4px spacing scale
 ```
 
-The AI will use the official Figma MCP to create the file and build the design system. No token, no plugin, no config.
+The AI will use the official Figma MCP to create the file and build the design system. No token needed for creating and writing to Figma.
 
 More things to try:
 

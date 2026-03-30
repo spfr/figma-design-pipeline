@@ -1,10 +1,10 @@
 ---
 name: figma-design-pipeline
 description: >
-  Design intelligence for Figma — analyze websites to extract design languages, inspect and audit Figma files,
-  extract and sync design tokens, plan design improvements, and generate code from Figma designs.
-  Use alongside Figma write tools (use_figma, create_new_file) which are provided by the Figma integration
-  in your environment. This skill adds the analysis brain; the Figma integration provides the hands.
+  Design intelligence and high-performance writes for Figma. Analyze websites, inspect and audit Figma files,
+  extract and sync design tokens, plan improvements, generate code, and execute batch Figma mutations 30-60x
+  faster via the plugin bridge (figma_execute). Call figma_plugin_status first to check if the plugin is connected.
+  Also works alongside Figma write tools (use_figma, create_new_file) from the Figma integration in your environment.
 allowed-tools:
   # Plugin tools (high-performance batch execution via Figma plugin)
   - mcp__figma-design-pipeline__figma_execute
