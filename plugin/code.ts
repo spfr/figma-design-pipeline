@@ -122,29 +122,35 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
     case "move": {
       const node = findSceneNode(action.nodeId as string);
-      const parent = findNode(action.targetParentId as string) as FrameNode;
+      const parent = findNode(action.targetParentId as string);
+      if (!("children" in parent)) throw new Error(`Target ${action.targetParentId} is not a container`);
+      const container = parent as FrameNode;
       const beforeParent = node.parent?.id;
       if (action.insertIndex !== undefined) {
-        parent.insertChild(action.insertIndex as number, node);
+        container.insertChild(action.insertIndex as number, node);
       } else {
-        parent.appendChild(node);
+        container.appendChild(node);
       }
-      return { before: { parentId: beforeParent }, after: { parentId: parent.id } };
+      return { before: { parentId: beforeParent }, after: { parentId: container.id } };
     }
 
     case "create_frame": {
-      const parent = findNode(action.parentId as string) as FrameNode;
+      const parent = findNode(action.parentId as string);
+      if (!("children" in parent)) throw new Error(`Parent ${action.parentId} is not a container`);
+      const container = parent as FrameNode;
       const frame = figma.createFrame();
       frame.name = action.name as string;
+      frame.resize((action.width as number) || 100, (action.height as number) || 100);
+      container.appendChild(frame);
+      // Set position AFTER appendChild so coordinates are relative to parent
       frame.x = (action.x as number) || 0;
       frame.y = (action.y as number) || 0;
-      frame.resize((action.width as number) || 100, (action.height as number) || 100);
-      parent.appendChild(frame);
       return { after: { id: frame.id, name: frame.name }, newNodeId: frame.id };
     }
 
     case "delete_node": {
       const node = findSceneNode(action.nodeId as string);
+      if (node.type === "PAGE" || node.type === "DOCUMENT") throw new Error(`Cannot delete ${node.type} node`);
       const before = captureSnapshot(node);
       node.remove();
       return { before };
@@ -175,7 +181,9 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_layout_mode": {
-      const frame = findSceneNode(action.nodeId as string) as FrameNode;
+      const node = findSceneNode(action.nodeId as string);
+      if (!("layoutMode" in node)) throw new Error(`Node ${action.nodeId} does not support layout mode`);
+      const frame = node as FrameNode;
       const before = { layoutMode: frame.layoutMode };
       frame.layoutMode = action.mode as "HORIZONTAL" | "VERTICAL" | "NONE";
       if (action.primaryAxisSizingMode) frame.primaryAxisSizingMode = action.primaryAxisSizingMode as "FIXED" | "AUTO";
@@ -191,7 +199,9 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_alignment": {
-      const frame = findSceneNode(action.nodeId as string) as FrameNode;
+      const node = findSceneNode(action.nodeId as string);
+      if (!("layoutMode" in node)) throw new Error(`Node ${action.nodeId} does not support alignment`);
+      const frame = node as FrameNode;
       const before = {
         primaryAxisAlignItems: frame.primaryAxisAlignItems,
         counterAxisAlignItems: frame.counterAxisAlignItems,
@@ -202,7 +212,9 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_spacing": {
-      const frame = findSceneNode(action.nodeId as string) as FrameNode;
+      const node = findSceneNode(action.nodeId as string);
+      if (!("layoutMode" in node)) throw new Error(`Node ${action.nodeId} does not support spacing`);
+      const frame = node as FrameNode;
       const before = {
         itemSpacing: frame.itemSpacing,
         paddingTop: frame.paddingTop, paddingRight: frame.paddingRight,
@@ -338,8 +350,12 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "swap_instance": {
-      const instance = findSceneNode(action.instanceId as string) as InstanceNode;
-      const newComp = findNode(action.newComponentId as string) as ComponentNode;
+      const instNode = findSceneNode(action.instanceId as string);
+      if (instNode.type !== "INSTANCE") throw new Error(`Node ${action.instanceId} is not an instance`);
+      const instance = instNode as InstanceNode;
+      const compNode = findNode(action.newComponentId as string);
+      if (compNode.type !== "COMPONENT") throw new Error(`Node ${action.newComponentId} is not a component`);
+      const newComp = compNode as ComponentNode;
       instance.swapComponent(newComp);
       return { after: { componentId: newComp.id } };
     }
@@ -490,14 +506,11 @@ async function processBatch(batch: Batch): Promise<BatchResult> {
     }
   }
 
-  // Rollback: undo exactly the mutations from THIS batch, not user history
+  // Rollback: Figma coalesces rapid plugin mutations into a single undo entry,
+  // so we call triggerUndo() exactly ONCE to undo the entire batch.
   let rollbackApplied = false;
   if (batch.rollbackOnError && failed > 0 && mutated > 0) {
-    // figma.triggerUndo() undoes one operation at a time from the undo stack.
-    // We only undo the count of mutations we made in this batch.
-    for (let i = 0; i < mutated; i++) {
-      figma.triggerUndo();
-    }
+    figma.triggerUndo();
     rollbackApplied = true;
   }
 
@@ -519,7 +532,8 @@ let bridgeConnected = false;
 figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
   if (msg.type === "bridge_connected") {
     bridgeConnected = true;
-    // Send handshake
+    // Clear font cache on reconnect (fonts may have changed between sessions)
+    loadedFonts.clear();
     figma.ui.postMessage({
       type: "send_to_bridge",
       data: {

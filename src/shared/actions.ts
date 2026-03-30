@@ -118,7 +118,7 @@ export const setFillsActionSchema = z
     nodeId: z.string(),
     fills: z.array(
       z.object({
-        type: z.enum(["SOLID", "GRADIENT_LINEAR", "IMAGE"]),
+        type: z.enum(["SOLID"]),
         color: z
           .object({
             r: z.number().min(0).max(1),

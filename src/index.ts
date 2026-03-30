@@ -483,7 +483,7 @@ server.tool(
 
 server.tool(
   "figma_execute",
-  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 27 action types: rename, create_frame, set_fills, set_text_content, create_component, etc. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
+  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 28 action types: rename, create_frame, set_fills, set_text_content, create_component, etc. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
   executeInputSchema.shape,
   async (params) => {
     const result = await handleExecute(bridge, {

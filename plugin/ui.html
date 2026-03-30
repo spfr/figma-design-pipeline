@@ -6,11 +6,13 @@
 const PORTS = [4010, 4011, 4012, 4013, 4014];
 const RECONNECT_MS = 2000;
 const MAX_RECONNECT_MS = 30000;
+const PORT_CYCLE_AFTER = 3; // retry same port N times before cycling
 
 let ws = null;
 let portIdx = 0;
 let delay = RECONNECT_MS;
 let timer = null;
+let samePortRetries = 0;
 
 const el = document.getElementById("status");
 
@@ -22,6 +24,7 @@ function connect() {
 
   ws.onopen = function() {
     delay = RECONNECT_MS;
+    samePortRetries = 0;
     el.textContent = "Connected (port " + port + ")";
     el.style.color = "#0a0";
     parent.postMessage({ pluginMessage: { type: "bridge_connected" } }, "*");
@@ -53,8 +56,12 @@ function scheduleReconnect() {
   if (timer) clearTimeout(timer);
   timer = setTimeout(function() {
     timer = null;
+    samePortRetries++;
+    if (samePortRetries >= PORT_CYCLE_AFTER) {
+      samePortRetries = 0;
+      portIdx = (portIdx + 1) % PORTS.length;
+    }
     delay = Math.min(delay * 1.5, MAX_RECONNECT_MS);
-    portIdx = (portIdx + 1) % PORTS.length;
     connect();
   }, delay);
 }
