@@ -52,7 +52,7 @@ AI Agent (Claude Code / Codex / Gemini)
     └─ Browser Tools ───────→ Website capture & analysis
 ```
 
-The official Figma MCP handles all Figma reads and writes via OAuth — no personal access token needed. This MCP server provides the design intelligence layer: structured inspection, auditing, planning, token sync, and code generation.
+The official Figma MCP handles Figma reads and file creation via OAuth — no personal access token needed. This MCP server provides design intelligence (inspection, auditing, planning, token sync, code generation) plus a high-performance plugin bridge for writes (`figma_execute` — 30-60x faster than `use_figma`).
 
 ## Quick Start
 
@@ -165,7 +165,7 @@ export COMPONENT_REGISTRY_DIR=/path/to/registry  # Component registry for codege
 Two paths:
 
 1. **Plugin connected** (recommended): `figma_execute` sends batched actions to the Figma plugin via WebSocket. 50 operations in ~200ms vs ~50 seconds with individual `use_figma` calls.
-2. **Plugin not connected**: Use the official Figma MCP's `use_figma` directly, or call `figma_execute` which returns fallback JavaScript.
+2. **Plugin not connected**: Call `figma_execute` anyway — it returns fallback JavaScript you can pass to `use_figma`.
 
 ### Installing the Figma Plugin
 
@@ -200,7 +200,7 @@ Two paths:
 1. figma_audit → find naming issues, layout problems
 2. figma_plan_naming → generate rename plan
 3. figma_plan_layout → plan auto-layout conversion
-4. use_figma → execute the plans
+4. figma_execute → execute the plans (or use_figma with fallback JS)
 5. figma_audit → verify improvements
 ```
 

@@ -506,7 +506,7 @@ server.tool(
 
 server.tool(
   "figma_execute",
-  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 42 action types including layout (set_child_layout_sizing, set_constraints), variables (create_variable, bind_variable), pages (create_page, switch_page), gradients, images, text properties, and more. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
+  "PREFERRED TOOL for ALL Figma write operations. Execute a batch of validated actions via plugin bridge — 30-60x faster than use_figma. Do NOT use use_figma for writes; use this tool instead. Supports 42 action types including layout, variables, pages, gradients, images, text properties, and more. If plugin not connected, returns fallback JavaScript for use_figma. Call figma_plugin_status to check connection.",
   executeInputSchema.shape,
   async (params) => {
     const result = await handleExecute(bridge, {
