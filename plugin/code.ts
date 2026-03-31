@@ -409,6 +409,232 @@ async function executeAction(action: Record<string, unknown>): Promise<{
       return { after: { format, size: bytes.byteLength, base64 } };
     }
 
+    // ─── Responsive Layout ────────────────────────────────────────
+
+    case "set_child_layout_sizing": {
+      const node = findSceneNode(action.nodeId as string);
+      const before: Record<string, unknown> = {};
+      if ("layoutSizingHorizontal" in node) before.layoutSizingHorizontal = (node as FrameNode).layoutSizingHorizontal;
+      if ("layoutSizingVertical" in node) before.layoutSizingVertical = (node as FrameNode).layoutSizingVertical;
+      if (action.layoutSizingHorizontal) (node as FrameNode).layoutSizingHorizontal = action.layoutSizingHorizontal as "FILL" | "HUG" | "FIXED";
+      if (action.layoutSizingVertical) (node as FrameNode).layoutSizingVertical = action.layoutSizingVertical as "FILL" | "HUG" | "FIXED";
+      return { before, after: { layoutSizingHorizontal: (node as FrameNode).layoutSizingHorizontal, layoutSizingVertical: (node as FrameNode).layoutSizingVertical } };
+    }
+
+    case "set_constraints": {
+      const node = findSceneNode(action.nodeId as string);
+      if (!("constraints" in node)) throw new Error(`Node ${action.nodeId} does not support constraints`);
+      const before = { constraints: (node as FrameNode).constraints };
+      if (action.horizontal) (node as FrameNode).constraints = { ...(node as FrameNode).constraints, horizontal: action.horizontal as ConstraintType };
+      if (action.vertical) (node as FrameNode).constraints = { ...(node as FrameNode).constraints, vertical: action.vertical as ConstraintType };
+      return { before, after: { constraints: (node as FrameNode).constraints } };
+    }
+
+    case "set_min_max_size": {
+      const node = findSceneNode(action.nodeId as string);
+      const before: Record<string, unknown> = {};
+      if ("minWidth" in node) before.minWidth = (node as FrameNode).minWidth;
+      if ("maxWidth" in node) before.maxWidth = (node as FrameNode).maxWidth;
+      if (action.minWidth !== undefined) (node as FrameNode).minWidth = action.minWidth as number;
+      if (action.maxWidth !== undefined) (node as FrameNode).maxWidth = action.maxWidth as number;
+      if (action.minHeight !== undefined) (node as FrameNode).minHeight = action.minHeight as number;
+      if (action.maxHeight !== undefined) (node as FrameNode).maxHeight = action.maxHeight as number;
+      return { before, after: { minWidth: (node as FrameNode).minWidth, maxWidth: (node as FrameNode).maxWidth } };
+    }
+
+    // ─── Page Management ──────────────────────────────────────────
+
+    case "create_page": {
+      const page = figma.createPage();
+      page.name = action.name as string;
+      return { after: { id: page.id, name: page.name }, newNodeId: page.id };
+    }
+
+    case "switch_page": {
+      const pageNode = figma.getNodeById(action.pageId as string);
+      if (!pageNode || pageNode.type !== "PAGE") throw new Error(`Node ${action.pageId} is not a page`);
+      await figma.setCurrentPageAsync(pageNode as PageNode);
+      return { after: { pageId: pageNode.id, pageName: pageNode.name } };
+    }
+
+    // ─── Rich Content ─────────────────────────────────────────────
+
+    case "set_gradient_fill": {
+      const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
+      const before = { fills: safeSerialize(node.fills) };
+      const stops = (action.stops as Array<{ position: number; color: { r: number; g: number; b: number; a: number } }>);
+      const angle = ((action.angle as number) || 0) * Math.PI / 180;
+      const gradientType = (action.gradientType as string) || "LINEAR";
+
+      const gradientTransform: Transform = [
+        [Math.cos(angle), Math.sin(angle), 0],
+        [-Math.sin(angle), Math.cos(angle), 0],
+      ];
+
+      const fill: GradientPaint = {
+        type: `GRADIENT_${gradientType}` as "GRADIENT_LINEAR" | "GRADIENT_RADIAL" | "GRADIENT_ANGULAR",
+        gradientStops: stops.map(s => ({ position: s.position, color: s.color })),
+        gradientTransform,
+      };
+      node.fills = [fill];
+      return { before, after: { fills: safeSerialize(node.fills) } };
+    }
+
+    case "set_image_fill": {
+      const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
+      const before = { fills: safeSerialize(node.fills) };
+      const base64 = action.imageBase64 as string;
+      const image = figma.createImage(figma.base64Decode(base64));
+      const fill: ImagePaint = {
+        type: "IMAGE",
+        imageHash: image.hash,
+        scaleMode: (action.scaleMode as "FILL" | "FIT" | "CROP" | "TILE") || "FILL",
+      };
+      node.fills = [fill];
+      return { before, after: { imageHash: image.hash } };
+    }
+
+    // ─── Text Enhancement ─────────────────────────────────────────
+
+    case "set_text_properties": {
+      const node = findSceneNode(action.nodeId as string) as TextNode;
+      const before: Record<string, unknown> = {};
+      if (action.textAlignHorizontal) {
+        before.textAlignHorizontal = node.textAlignHorizontal;
+        node.textAlignHorizontal = action.textAlignHorizontal as "LEFT" | "CENTER" | "RIGHT" | "JUSTIFIED";
+      }
+      if (action.textAlignVertical) {
+        before.textAlignVertical = node.textAlignVertical;
+        node.textAlignVertical = action.textAlignVertical as "TOP" | "CENTER" | "BOTTOM";
+      }
+      if (action.paragraphSpacing !== undefined) {
+        before.paragraphSpacing = node.paragraphSpacing;
+        node.paragraphSpacing = action.paragraphSpacing as number;
+      }
+      if (action.textCase) {
+        node.textCase = action.textCase as TextCase;
+      }
+      if (action.textDecoration) {
+        node.textDecoration = action.textDecoration as TextDecoration;
+      }
+      if (action.textAutoResize) {
+        before.textAutoResize = node.textAutoResize;
+        node.textAutoResize = action.textAutoResize as "NONE" | "WIDTH_AND_HEIGHT" | "HEIGHT" | "TRUNCATE";
+      }
+      return { before, after: { textAlignHorizontal: node.textAlignHorizontal } };
+    }
+
+    // ─── Style Binding ────────────────────────────────────────────
+
+    case "apply_style": {
+      const node = findSceneNode(action.nodeId as string);
+      const property = action.property as string;
+      const styleId = resolveId(action.styleId as string);
+      if (property === "fill" && "fillStyleId" in node) {
+        (node as GeometryMixin).fillStyleId = styleId;
+      } else if (property === "stroke" && "strokeStyleId" in node) {
+        (node as GeometryMixin).strokeStyleId = styleId;
+      } else if (property === "text" && "textStyleId" in node) {
+        (node as TextNode).textStyleId = styleId;
+      } else if (property === "effect" && "effectStyleId" in node) {
+        (node as BlendMixin).effectStyleId = styleId;
+      } else {
+        throw new Error(`Cannot apply ${property} style to node type ${node.type}`);
+      }
+      return { after: { styleId, property } };
+    }
+
+    case "set_description": {
+      const node = findNode(action.nodeId as string);
+      if (!("description" in node)) throw new Error(`Node ${action.nodeId} does not support descriptions`);
+      const before = { description: (node as ComponentNode).description };
+      (node as ComponentNode).description = action.description as string;
+      return { before, after: { description: (node as ComponentNode).description } };
+    }
+
+    // ─── Component Property Definition ────────────────────────────
+
+    case "define_component_property": {
+      const node = findNode(action.nodeId as string);
+      if (node.type !== "COMPONENT" && node.type !== "COMPONENT_SET") {
+        throw new Error(`Node ${action.nodeId} is not a component or component set`);
+      }
+      const comp = node as ComponentNode;
+      comp.addComponentProperty(
+        action.propertyName as string,
+        action.propertyType as ComponentPropertyType,
+        action.defaultValue as string | boolean
+      );
+      return { after: { propertyName: action.propertyName, propertyType: action.propertyType } };
+    }
+
+    // ─── Figma Variables ──────────────────────────────────────────
+
+    case "create_variable_collection": {
+      const collection = figma.variables.createVariableCollection(action.name as string);
+      const modes = (action.modes as string[]) || ["Default"];
+      // Rename the default mode
+      if (modes[0]) collection.renameMode(collection.modes[0].modeId, modes[0]);
+      // Add additional modes
+      for (let i = 1; i < modes.length; i++) {
+        collection.addMode(modes[i]);
+      }
+      return { after: { id: collection.id, name: collection.name, modes: collection.modes }, newNodeId: collection.id };
+    }
+
+    case "create_variable": {
+      const collectionId = resolveId(action.collectionId as string);
+      const collection = figma.variables.getVariableCollectionById(collectionId);
+      if (!collection) throw new Error(`Variable collection not found: ${collectionId}`);
+      const variable = figma.variables.createVariable(
+        action.name as string,
+        collection,
+        action.resolvedType as VariableResolvedDataType
+      );
+      // Set scopes if provided
+      if (action.scopes) variable.scopes = action.scopes as VariableScope[];
+      // Set value for each mode
+      const value = action.value;
+      if (action.resolvedType === "COLOR" && typeof value === "string") {
+        // Parse hex to Figma color
+        const hex = (value as string).replace("#", "");
+        const r = parseInt(hex.substring(0, 2), 16) / 255;
+        const g = parseInt(hex.substring(2, 4), 16) / 255;
+        const b = parseInt(hex.substring(4, 6), 16) / 255;
+        const a = hex.length === 8 ? parseInt(hex.substring(6, 8), 16) / 255 : 1;
+        for (const mode of collection.modes) {
+          variable.setValueForMode(mode.modeId, { r, g, b, a });
+        }
+      } else {
+        for (const mode of collection.modes) {
+          variable.setValueForMode(mode.modeId, value as string | number | boolean);
+        }
+      }
+      return { after: { id: variable.id, name: variable.name }, newNodeId: variable.id };
+    }
+
+    case "bind_variable": {
+      const node = findSceneNode(action.nodeId as string);
+      const variableId = resolveId(action.variableId as string);
+      const variable = figma.variables.getVariableById(variableId);
+      if (!variable) throw new Error(`Variable not found: ${variableId}`);
+      const property = action.property as string;
+      const paintIndex = (action.paintIndex as number) || 0;
+
+      if (property === "fills" || property === "strokes") {
+        const paintsProp = property as "fills" | "strokes";
+        const paints = [...((node as GeometryMixin)[paintsProp] as Paint[])];
+        if (paints[paintIndex]) {
+          paints[paintIndex] = figma.variables.setBoundVariableForPaint(paints[paintIndex] as SolidPaint, "color", variable);
+          (node as GeometryMixin)[paintsProp] = paints;
+        }
+      } else {
+        // Numeric properties: spacing, radius, opacity, size
+        (node as SceneNode).setBoundVariable(property as VariableBindableNodeField, variable);
+      }
+      return { after: { variableId: variable.id, property } };
+    }
+
     default:
       throw new Error(`Unknown action type: ${type}`);
   }

@@ -350,37 +350,218 @@ export const createEffectStyleActionSchema = z
   })
   .strict();
 
+// ─── Responsive Layout Actions ──────────────────────────────────────
+
+export const setChildLayoutSizingActionSchema = z
+  .object({
+    type: z.literal("set_child_layout_sizing"),
+    nodeId: z.string().describe("Child node inside an auto-layout parent"),
+    layoutSizingHorizontal: z.enum(["FILL", "HUG", "FIXED"]).optional(),
+    layoutSizingVertical: z.enum(["FILL", "HUG", "FIXED"]).optional(),
+  })
+  .strict();
+
+export const setConstraintsActionSchema = z
+  .object({
+    type: z.literal("set_constraints"),
+    nodeId: z.string(),
+    horizontal: z.enum(["MIN", "CENTER", "MAX", "STRETCH", "SCALE"]).optional(),
+    vertical: z.enum(["MIN", "CENTER", "MAX", "STRETCH", "SCALE"]).optional(),
+  })
+  .strict();
+
+export const setMinMaxSizeActionSchema = z
+  .object({
+    type: z.literal("set_min_max_size"),
+    nodeId: z.string(),
+    minWidth: z.number().min(0).optional(),
+    maxWidth: z.number().min(0).optional(),
+    minHeight: z.number().min(0).optional(),
+    maxHeight: z.number().min(0).optional(),
+  })
+  .strict();
+
+// ─── Page Management Actions ────────────────────────────────────────
+
+export const createPageActionSchema = z
+  .object({
+    type: z.literal("create_page"),
+    name: z.string().min(1),
+  })
+  .strict();
+
+export const switchPageActionSchema = z
+  .object({
+    type: z.literal("switch_page"),
+    pageId: z.string().describe("Page node ID to switch to"),
+  })
+  .strict();
+
+// ─── Rich Content Actions ───────────────────────────────────────────
+
+export const setGradientFillActionSchema = z
+  .object({
+    type: z.literal("set_gradient_fill"),
+    nodeId: z.string(),
+    gradientType: z.enum(["LINEAR", "RADIAL", "ANGULAR"]).default("LINEAR"),
+    stops: z.array(z.object({
+      position: z.number().min(0).max(1),
+      color: z.object({
+        r: z.number().min(0).max(1),
+        g: z.number().min(0).max(1),
+        b: z.number().min(0).max(1),
+        a: z.number().min(0).max(1).default(1),
+      }),
+    })).min(2),
+    angle: z.number().optional().describe("Angle in degrees for linear gradients (0 = top to bottom)"),
+  })
+  .strict();
+
+export const setImageFillActionSchema = z
+  .object({
+    type: z.literal("set_image_fill"),
+    nodeId: z.string(),
+    imageBase64: z.string().describe("Base64-encoded image data"),
+    scaleMode: z.enum(["FILL", "FIT", "CROP", "TILE"]).default("FILL"),
+  })
+  .strict();
+
+// ─── Text Enhancement Actions ───────────────────────────────────────
+
+export const setTextPropertiesActionSchema = z
+  .object({
+    type: z.literal("set_text_properties"),
+    nodeId: z.string(),
+    textAlignHorizontal: z.enum(["LEFT", "CENTER", "RIGHT", "JUSTIFIED"]).optional(),
+    textAlignVertical: z.enum(["TOP", "CENTER", "BOTTOM"]).optional(),
+    paragraphSpacing: z.number().min(0).optional(),
+    textCase: z.enum(["ORIGINAL", "UPPER", "LOWER", "TITLE"]).optional(),
+    textDecoration: z.enum(["NONE", "UNDERLINE", "STRIKETHROUGH"]).optional(),
+    textAutoResize: z.enum(["NONE", "WIDTH_AND_HEIGHT", "HEIGHT", "TRUNCATE"]).optional(),
+  })
+  .strict();
+
+// ─── Style Binding Actions ──────────────────────────────────────────
+
+export const applyStyleActionSchema = z
+  .object({
+    type: z.literal("apply_style"),
+    nodeId: z.string(),
+    styleId: z.string().describe("Paint/text/effect style ID"),
+    property: z.enum(["fill", "stroke", "text", "effect"]),
+  })
+  .strict();
+
+export const setDescriptionActionSchema = z
+  .object({
+    type: z.literal("set_description"),
+    nodeId: z.string(),
+    description: z.string(),
+  })
+  .strict();
+
+// ─── Component Property Definition ──────────────────────────────────
+
+export const defineComponentPropertyActionSchema = z
+  .object({
+    type: z.literal("define_component_property"),
+    nodeId: z.string().describe("Master component ID"),
+    propertyName: z.string(),
+    propertyType: z.enum(["TEXT", "BOOLEAN", "INSTANCE_SWAP", "VARIANT"]),
+    defaultValue: z.union([z.string(), z.boolean()]),
+  })
+  .strict();
+
+// ─── Figma Variables Actions ────────────────────────────────────────
+
+export const createVariableCollectionActionSchema = z
+  .object({
+    type: z.literal("create_variable_collection"),
+    name: z.string().min(1),
+    modes: z.array(z.string()).default(["Default"]).describe("Mode names (e.g., ['Light', 'Dark'])"),
+  })
+  .strict();
+
+export const createVariableActionSchema = z
+  .object({
+    type: z.literal("create_variable"),
+    collectionId: z.string().describe("Variable collection ID (use $ref: for recently created)"),
+    name: z.string().min(1).describe("Variable name (use '/' for folders, e.g., 'color/brand/primary')"),
+    resolvedType: z.enum(["COLOR", "FLOAT", "STRING", "BOOLEAN"]),
+    value: z.unknown().describe("Value matching the type: hex string for COLOR, number for FLOAT, etc."),
+    scopes: z.array(z.string()).optional().describe("Scope list, e.g., ['FRAME_FILL', 'SHAPE_FILL'] — defaults to ALL_SCOPES if omitted"),
+  })
+  .strict();
+
+export const bindVariableActionSchema = z
+  .object({
+    type: z.literal("bind_variable"),
+    nodeId: z.string(),
+    property: z.enum([
+      "fills", "strokes",
+      "paddingLeft", "paddingRight", "paddingTop", "paddingBottom",
+      "itemSpacing", "cornerRadius", "opacity",
+      "width", "height",
+    ]),
+    variableId: z.string().describe("Variable ID to bind (use $ref: for recently created)"),
+    paintIndex: z.number().int().min(0).optional().describe("For fills/strokes: which paint in the array to bind (default 0)"),
+  })
+  .strict();
+
 // ─── Union of all actions ────────────────────────────────────────────
 
 export const actionSchema = z.discriminatedUnion("type", [
+  // Core scene graph
   renameActionSchema,
   moveActionSchema,
   createFrameActionSchema,
   deleteNodeActionSchema,
-  setLayoutModeActionSchema,
-  setSpacingActionSchema,
   resizeActionSchema,
+  setPositionActionSchema,
+  duplicateNodeActionSchema,
+  setVisibleActionSchema,
+  setOpacityActionSchema,
+  // Layout
+  setLayoutModeActionSchema,
+  setLayoutPositioningActionSchema,
+  setAlignmentActionSchema,
+  setSpacingActionSchema,
+  setChildLayoutSizingActionSchema,
+  setConstraintsActionSchema,
+  setMinMaxSizeActionSchema,
+  // Appearance
+  setFillsActionSchema,
+  setGradientFillActionSchema,
+  setImageFillActionSchema,
+  setStrokesActionSchema,
+  setEffectsActionSchema,
+  setCornerRadiusActionSchema,
+  // Text
+  setTextContentActionSchema,
+  setTextStyleActionSchema,
+  setTextPropertiesActionSchema,
+  // Components
   createComponentFromNodeActionSchema,
   createComponentSetActionSchema,
   createInstanceActionSchema,
   swapInstanceActionSchema,
-  setFillsActionSchema,
-  setTextContentActionSchema,
-  setTextStyleActionSchema,
-  setCornerRadiusActionSchema,
-  exportNodeActionSchema,
-  setPositionActionSchema,
-  setLayoutPositioningActionSchema,
-  setVisibleActionSchema,
-  setOpacityActionSchema,
-  setStrokesActionSchema,
-  setEffectsActionSchema,
-  setAlignmentActionSchema,
-  duplicateNodeActionSchema,
   setComponentPropertiesActionSchema,
+  defineComponentPropertyActionSchema,
+  // Styles
   createPaintStyleActionSchema,
   createTextStyleActionSchema,
   createEffectStyleActionSchema,
+  applyStyleActionSchema,
+  setDescriptionActionSchema,
+  // Pages
+  createPageActionSchema,
+  switchPageActionSchema,
+  // Variables (design tokens)
+  createVariableCollectionActionSchema,
+  createVariableActionSchema,
+  bindVariableActionSchema,
+  // Export
+  exportNodeActionSchema,
 ]);
 
 export type Action = z.infer<typeof actionSchema>;

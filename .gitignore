@@ -22,3 +22,4 @@ registry/
 .vscode/
 .DS_Store
 .playwright-mcp/
+.claude/worktrees/

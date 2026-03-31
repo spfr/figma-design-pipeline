@@ -29,6 +29,7 @@ export function compileBatch(actions: Action[], options: CompileOptions = {}): C
   const CREATE_TYPES = new Set([
     "create_frame", "create_component_from_node", "create_component_set",
     "create_instance", "duplicate_node", "create_paint_style", "create_text_style", "create_effect_style",
+    "create_page", "create_variable_collection", "create_variable",
   ]);
 
   for (const action of actions) {

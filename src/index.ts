@@ -189,48 +189,71 @@ Use this path when turning organized Figma structure into code or schema output.
 - Keep generation scoped to a focused page or section node for cleaner output.
 `;
 
-const ACTION_REFERENCE = `# Figma Plugin API Action Reference
+const ACTION_REFERENCE = `# figma_execute Action Reference — 43 Action Types
 
-Reference for generating use_figma JavaScript code via the official Figma MCP.
-These action patterns map to Figma Plugin API calls.
+Use with figma_execute({ actions: [...] }) for batch execution via the plugin bridge.
 
-## Layout & Structure
-- Rename: node.name = "new name"
-- Create frame: figma.createFrame() + set size, position, fills
-- Delete: node.remove()
-- Resize: node.resize(width, height)
-- Position: node.x = x; node.y = y
-- Duplicate: node.clone()
+## Scene Graph
+- rename: { nodeId, name }
+- move: { nodeId, targetParentId, insertIndex? }
+- create_frame: { name, parentId, x?, y?, width?, height? } → returns newNodeId
+- delete_node: { nodeId, confirmed: true }
+- resize: { nodeId, width?, height? }
+- set_position: { nodeId, x?, y? }
+- duplicate_node: { nodeId } → returns newNodeId
+- set_visible: { nodeId, visible }
+- set_opacity: { nodeId, opacity: 0-1 }
 
-## Auto-Layout
-- Set layout: node.layoutMode = "HORIZONTAL" | "VERTICAL" | "NONE"
-- Sizing: node.primaryAxisSizingMode = "FIXED" | "AUTO"
-- Alignment: node.primaryAxisAlignItems = "MIN" | "CENTER" | "MAX" | "SPACE_BETWEEN"
-- Spacing: node.itemSpacing = N; node.paddingTop = N; etc.
+## Layout
+- set_layout_mode: { nodeId, mode: "HORIZONTAL"|"VERTICAL"|"NONE" }
+- set_layout_positioning: { nodeId, positioning: "AUTO"|"ABSOLUTE" }
+- set_alignment: { nodeId, primaryAxisAlignItems?, counterAxisAlignItems? }
+- set_spacing: { nodeId, itemSpacing?, paddingTop/Right/Bottom/Left? }
+- **set_child_layout_sizing: { nodeId, layoutSizingHorizontal?: "FILL"|"HUG"|"FIXED", layoutSizingVertical? }** — responsive stretching
+- **set_constraints: { nodeId, horizontal?: "MIN"|"CENTER"|"MAX"|"STRETCH"|"SCALE", vertical? }** — responsive pinning
+- **set_min_max_size: { nodeId, minWidth?, maxWidth?, minHeight?, maxHeight? }** — responsive boundaries
 
 ## Appearance
-- Fills: node.fills = [{ type: "SOLID", color: { r, g, b } }]
-- Strokes: node.strokes = [...]; node.strokeWeight = N
-- Effects: node.effects = [{ type: "DROP_SHADOW", ... }]
-- Corner radius: node.cornerRadius = N; or node.topLeftRadius = N; etc.
-- Visibility: node.visible = true/false
-- Opacity: node.opacity = 0-1
+- set_fills: { nodeId, fills: [{ type: "SOLID", color: {r,g,b,a} }] }
+- **set_gradient_fill: { nodeId, gradientType: "LINEAR"|"RADIAL"|"ANGULAR", stops: [{position, color}], angle? }**
+- **set_image_fill: { nodeId, imageBase64, scaleMode: "FILL"|"FIT"|"CROP"|"TILE" }**
+- set_strokes: { nodeId, strokes, strokeWeight? }
+- set_effects: { nodeId, effects }
+- set_corner_radius: { nodeId, radius? | radii?: [tl,tr,br,bl] }
 
 ## Text
-- Content: textNode.characters = "text" (must await figma.loadFontAsync first)
-- Style: textNode.fontSize = N; textNode.fontName = { family, style }
+- set_text_content: { nodeId, characters }
+- set_text_style: { nodeId, fontFamily?, fontSize?, fontWeight?, lineHeight?, letterSpacing? }
+- **set_text_properties: { nodeId, textAlignHorizontal?, textAlignVertical?, paragraphSpacing?, textCase?, textDecoration?, textAutoResize? }**
 
 ## Components
-- Create: figma.createComponentFromNode(node)
-- Component set: figma.combineAsVariants([comp1, comp2], parent)
-- Instance: component.createInstance()
-- Swap: instance.swapComponent(newComponent)
-- Properties: instance.setProperties({ "Prop": "value" })
+- create_component_from_node: { nodeId, name } → returns newNodeId
+- create_component_set: { componentIds[], name } → returns newNodeId
+- create_instance: { componentId, parentId, x?, y? } → returns newNodeId
+- swap_instance: { instanceId, newComponentId }
+- set_component_properties: { nodeId, properties: { "Prop": value } }
+- **define_component_property: { nodeId, propertyName, propertyType: "TEXT"|"BOOLEAN"|"INSTANCE_SWAP"|"VARIANT", defaultValue }**
 
 ## Styles
-- Create paint style: const style = figma.createPaintStyle(); style.name = "name"; style.paints = [...]
-- Create text style: const style = figma.createTextStyle(); style.name = "name"; style.fontSize = N
-- Create effect style: const style = figma.createEffectStyle(); style.name = "name"; style.effects = [...]
+- create_paint_style: { name, paints } → returns newNodeId
+- create_text_style: { name, fontFamily, fontSize, ... } → returns newNodeId
+- create_effect_style: { name, effects } → returns newNodeId
+- **apply_style: { nodeId, styleId, property: "fill"|"stroke"|"text"|"effect" }** — bind style to node
+- **set_description: { nodeId, description }** — component documentation
+
+## Pages
+- **create_page: { name }** → returns newNodeId
+- **switch_page: { pageId }** — navigate before creating on a specific page
+
+## Variables (Design Tokens)
+- **create_variable_collection: { name, modes: ["Light", "Dark"] }** → returns newNodeId
+- **create_variable: { collectionId, name, resolvedType: "COLOR"|"FLOAT"|"STRING"|"BOOLEAN", value, scopes? }** → returns newNodeId
+- **bind_variable: { nodeId, property: "fills"|"paddingLeft"|..., variableId, paintIndex? }** — bind token to node
+
+## Export
+- export_node: { nodeId, format?, scale? }
+
+**Bold** = new in v0.7. Use $ref:node-N for chaining created node IDs within a batch.
 `;
 
 // ─── MCP Server ─────────────────────────────────────────────────────
@@ -483,7 +506,7 @@ server.tool(
 
 server.tool(
   "figma_execute",
-  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 28 action types: rename, create_frame, set_fills, set_text_content, create_component, etc. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
+  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 43 action types including layout (set_child_layout_sizing, set_constraints), variables (create_variable, bind_variable), pages (create_page, switch_page), gradients, images, text properties, and more. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
   executeInputSchema.shape,
   async (params) => {
     const result = await handleExecute(bridge, {
