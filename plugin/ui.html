@@ -19,7 +19,7 @@ const el = document.getElementById("status");
 function connect() {
   if (ws) try { ws.close(); } catch(e) {}
   const port = PORTS[portIdx];
-  const url = "ws://localhost:" + port + "/plugin";
+  const url = "ws://127.0.0.1:" + port + "/plugin";
   ws = new WebSocket(url);
 
   ws.onopen = function() {

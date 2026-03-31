@@ -75,6 +75,7 @@ export class BridgeServer {
       server.on("error", reject);
 
       const wss = new WebSocketServer({ server, path: "/plugin" });
+      wss.on("error", reject);
 
       wss.on("connection", (ws) => {
         // Replace existing connection
@@ -108,7 +109,7 @@ export class BridgeServer {
         });
       });
 
-      server.listen(port, "localhost", () => {
+      server.listen(port, "127.0.0.1", () => {
         this.httpServer = server;
         this.wss = wss;
         this.boundPort = port;
