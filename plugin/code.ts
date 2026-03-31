@@ -39,15 +39,15 @@ function resolveId(id: string): string {
   return id;
 }
 
-function findNode(nodeId: string): BaseNode {
+async function findNode(nodeId: string): Promise<BaseNode> {
   const id = resolveId(nodeId);
-  const node = figma.getNodeById(id);
+  const node = await figma.getNodeByIdAsync(id);
   if (!node) throw new Error(`Node not found: ${id}`);
   return node;
 }
 
-function findSceneNode(nodeId: string): SceneNode {
-  const node = findNode(nodeId);
+async function findSceneNode(nodeId: string): Promise<SceneNode> {
+  const node = await findNode(nodeId);
   if (!("parent" in node)) throw new Error(`Not a scene node: ${nodeId}`);
   return node as SceneNode;
 }
@@ -55,8 +55,8 @@ function findSceneNode(nodeId: string): SceneNode {
 // ─── Font Weight Helpers ────────────────────────────────────────
 
 const WEIGHT_TO_STYLE: Record<number, string> = {
-  100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular",
-  500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
+  100: "Thin", 200: "Extra Light", 300: "Light", 400: "Regular",
+  500: "Medium", 600: "Semi Bold", 700: "Bold", 800: "Extra Bold", 900: "Black",
 };
 
 function weightToFontStyle(weight: number): string {
@@ -92,6 +92,22 @@ function captureSnapshot(node: SceneNode): Record<string, unknown> {
   return snap;
 }
 
+// ─── Paint Sanitizer (strip 'a' from color — Figma uses paint-level opacity) ──
+
+function sanitizePaints(paints: unknown[]): Paint[] {
+  return paints.map((p: any) => {
+    if (p && p.color && "a" in p.color) {
+      const { a, ...rgb } = p.color;
+      const cleaned = { ...p, color: rgb };
+      if (a !== undefined && a !== 1 && cleaned.opacity === undefined) {
+        cleaned.opacity = a;
+      }
+      return cleaned;
+    }
+    return p;
+  }) as Paint[];
+}
+
 // ─── Action Executors ───────────────────────────────────────────
 
 type ActionResult = {
@@ -114,15 +130,15 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
   switch (type) {
     case "rename": {
-      const node = findNode(action.nodeId as string);
+      const node = await findNode(action.nodeId as string);
       const before = { name: node.name };
       node.name = action.name as string;
       return { before, after: { name: node.name } };
     }
 
     case "move": {
-      const node = findSceneNode(action.nodeId as string);
-      const parent = findNode(action.targetParentId as string);
+      const node = await findSceneNode(action.nodeId as string);
+      const parent = await findNode(action.targetParentId as string);
       if (!("children" in parent)) throw new Error(`Target ${action.targetParentId} is not a container`);
       const container = parent as FrameNode;
       const beforeParent = node.parent?.id;
@@ -134,8 +150,34 @@ async function executeAction(action: Record<string, unknown>): Promise<{
       return { before: { parentId: beforeParent }, after: { parentId: container.id } };
     }
 
+    case "create_text": {
+      const parent = await findNode(action.parentId as string);
+      if (!("children" in parent)) throw new Error(`Parent ${action.parentId} is not a container`);
+      const container = parent as FrameNode;
+      const family = (action.fontFamily as string) || "Inter";
+      const weight = (action.fontWeight as number) || 400;
+      const style = weightToFontStyle(weight);
+      await ensureFonts([{ family, style }]);
+      const text = figma.createText();
+      text.fontName = { family, style };
+      text.characters = (action.characters as string) || "";
+      if (action.fontSize) text.fontSize = action.fontSize as number;
+      if (action.lineHeight) text.lineHeight = { value: action.lineHeight as number, unit: "PIXELS" };
+      if (action.letterSpacing) text.letterSpacing = { value: action.letterSpacing as number, unit: "PIXELS" };
+      if (action.fills) text.fills = sanitizePaints(action.fills as unknown[]);
+      if (action.textCase) text.textCase = action.textCase as TextCase;
+      if (action.textAlignHorizontal) text.textAlignHorizontal = action.textAlignHorizontal as "LEFT" | "CENTER" | "RIGHT" | "JUSTIFIED";
+      text.textAutoResize = (action.textAutoResize as "NONE" | "WIDTH_AND_HEIGHT" | "HEIGHT" | "TRUNCATE") || "HEIGHT";
+      if (action.name) text.name = action.name as string;
+      container.appendChild(text);
+      if (action.layoutSizingHorizontal) text.layoutSizingHorizontal = action.layoutSizingHorizontal as "FILL" | "HUG" | "FIXED";
+      if (action.layoutSizingVertical) text.layoutSizingVertical = action.layoutSizingVertical as "FILL" | "HUG" | "FIXED";
+      if (action.opacity !== undefined) text.opacity = action.opacity as number;
+      return { after: { id: text.id, name: text.name, characters: text.characters }, newNodeId: text.id };
+    }
+
     case "create_frame": {
-      const parent = findNode(action.parentId as string);
+      const parent = await findNode(action.parentId as string);
       if (!("children" in parent)) throw new Error(`Parent ${action.parentId} is not a container`);
       const container = parent as FrameNode;
       const frame = figma.createFrame();
@@ -149,7 +191,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "delete_node": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       if (node.type === "PAGE" || node.type === "DOCUMENT") throw new Error(`Cannot delete ${node.type} node`);
       const before = captureSnapshot(node);
       node.remove();
@@ -157,7 +199,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "resize": {
-      const node = findSceneNode(action.nodeId as string) as FrameNode;
+      const node = await findSceneNode(action.nodeId as string) as FrameNode;
       const before = { width: node.width, height: node.height };
       node.resize(
         (action.width as number) ?? node.width,
@@ -167,7 +209,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_position": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const before = { x: node.x, y: node.y };
       if (action.x !== undefined) node.x = action.x as number;
       if (action.y !== undefined) node.y = action.y as number;
@@ -175,13 +217,13 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "duplicate_node": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const clone = node.clone();
       return { after: { id: clone.id, name: clone.name }, newNodeId: clone.id };
     }
 
     case "set_layout_mode": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       if (!("layoutMode" in node)) throw new Error(`Node ${action.nodeId} does not support layout mode`);
       const frame = node as FrameNode;
       const before = { layoutMode: frame.layoutMode };
@@ -192,14 +234,14 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_layout_positioning": {
-      const node = findSceneNode(action.nodeId as string) as FrameNode;
+      const node = await findSceneNode(action.nodeId as string) as FrameNode;
       const before = { layoutPositioning: node.layoutPositioning };
       node.layoutPositioning = action.positioning as "AUTO" | "ABSOLUTE";
       return { before, after: { layoutPositioning: node.layoutPositioning } };
     }
 
     case "set_alignment": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       if (!("layoutMode" in node)) throw new Error(`Node ${action.nodeId} does not support alignment`);
       const frame = node as FrameNode;
       const before = {
@@ -212,7 +254,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_spacing": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       if (!("layoutMode" in node)) throw new Error(`Node ${action.nodeId} does not support spacing`);
       const frame = node as FrameNode;
       const before = {
@@ -229,29 +271,29 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_fills": {
-      const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
+      const node = await findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
       const before = { fills: safeSerialize(node.fills) };
-      node.fills = action.fills as Paint[];
+      node.fills = sanitizePaints(action.fills as unknown[]);
       return { before, after: { fills: safeSerialize(node.fills) } };
     }
 
     case "set_strokes": {
-      const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
+      const node = await findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
       const before = { strokes: safeSerialize(node.strokes), strokeWeight: safeSerialize((node as FrameNode).strokeWeight) };
-      node.strokes = action.strokes as Paint[];
+      node.strokes = sanitizePaints(action.strokes as unknown[]);
       if (action.strokeWeight !== undefined) (node as FrameNode).strokeWeight = action.strokeWeight as number;
       return { before, after: { strokes: safeSerialize(node.strokes) } };
     }
 
     case "set_effects": {
-      const node = findSceneNode(action.nodeId as string) as BlendMixin & SceneNode;
+      const node = await findSceneNode(action.nodeId as string) as BlendMixin & SceneNode;
       const before = { effects: JSON.parse(JSON.stringify(node.effects)) };
       node.effects = action.effects as Effect[];
       return { before, after: { effects: JSON.parse(JSON.stringify(node.effects)) } };
     }
 
     case "set_corner_radius": {
-      const node = findSceneNode(action.nodeId as string) as FrameNode;
+      const node = await findSceneNode(action.nodeId as string) as FrameNode;
       const before = { cornerRadius: node.cornerRadius };
       if (action.radius !== undefined) {
         node.cornerRadius = action.radius as number;
@@ -267,21 +309,21 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_visible": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const before = { visible: node.visible };
       node.visible = action.visible as boolean;
       return { before, after: { visible: node.visible } };
     }
 
     case "set_opacity": {
-      const node = findSceneNode(action.nodeId as string) as BlendMixin & SceneNode;
+      const node = await findSceneNode(action.nodeId as string) as BlendMixin & SceneNode;
       const before = { opacity: node.opacity };
       node.opacity = action.opacity as number;
       return { before, after: { opacity: node.opacity } };
     }
 
     case "set_text_content": {
-      const node = findSceneNode(action.nodeId as string) as TextNode;
+      const node = await findSceneNode(action.nodeId as string) as TextNode;
       // Handle mixed fonts: load all unique fonts in the text range
       const fontName = node.fontName;
       if (typeof fontName === "symbol") {
@@ -302,7 +344,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_text_style": {
-      const node = findSceneNode(action.nodeId as string) as TextNode;
+      const node = await findSceneNode(action.nodeId as string) as TextNode;
       const currentFont = node.fontName;
       const currentFamily = typeof currentFont === "symbol" ? "Inter" : currentFont.family;
       const currentStyle = typeof currentFont === "symbol" ? "Regular" : currentFont.style;
@@ -319,7 +361,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "create_component_from_node": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const comp = figma.createComponentFromNode(node);
       comp.name = action.name as string;
       return { after: { id: comp.id, name: comp.name }, newNodeId: comp.id };
@@ -327,11 +369,11 @@ async function executeAction(action: Record<string, unknown>): Promise<{
 
     case "create_component_set": {
       const ids = (action.componentIds as string[]).map(resolveId);
-      const comps = ids.map(id => {
-        const node = figma.getNodeById(id);
+      const comps = await Promise.all(ids.map(async id => {
+        const node = await figma.getNodeByIdAsync(id);
         if (!node || node.type !== "COMPONENT") throw new Error(`Node ${id} is not a component`);
         return node as ComponentNode;
-      });
+      }));
       const parent = comps[0].parent;
       if (!parent || !("appendChild" in parent)) throw new Error("Component has no valid parent for variant set");
       const set = figma.combineAsVariants(comps, parent as FrameNode);
@@ -340,9 +382,9 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "create_instance": {
-      const comp = findNode(action.componentId as string) as ComponentNode;
+      const comp = await findNode(action.componentId as string) as ComponentNode;
       const instance = comp.createInstance();
-      const parent = findNode(action.parentId as string) as FrameNode;
+      const parent = await findNode(action.parentId as string) as FrameNode;
       parent.appendChild(instance);
       if (action.x !== undefined) instance.x = action.x as number;
       if (action.y !== undefined) instance.y = action.y as number;
@@ -350,10 +392,10 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "swap_instance": {
-      const instNode = findSceneNode(action.instanceId as string);
+      const instNode = await findSceneNode(action.instanceId as string);
       if (instNode.type !== "INSTANCE") throw new Error(`Node ${action.instanceId} is not an instance`);
       const instance = instNode as InstanceNode;
-      const compNode = findNode(action.newComponentId as string);
+      const compNode = await findNode(action.newComponentId as string);
       if (compNode.type !== "COMPONENT") throw new Error(`Node ${action.newComponentId} is not a component`);
       const newComp = compNode as ComponentNode;
       instance.swapComponent(newComp);
@@ -361,7 +403,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_component_properties": {
-      const node = findSceneNode(action.nodeId as string) as InstanceNode;
+      const node = await findSceneNode(action.nodeId as string) as InstanceNode;
       const props = action.properties as Record<string, string | boolean>;
       for (const [key, value] of Object.entries(props)) {
         node.setProperties({ [key]: value });
@@ -398,7 +440,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "export_node": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const format = (action.format as string) || "PNG";
       const scale = (action.scale as number) || 2;
       const bytes = await node.exportAsync({
@@ -412,7 +454,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     // ─── Responsive Layout ────────────────────────────────────────
 
     case "set_child_layout_sizing": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const before: Record<string, unknown> = {};
       if ("layoutSizingHorizontal" in node) before.layoutSizingHorizontal = (node as FrameNode).layoutSizingHorizontal;
       if ("layoutSizingVertical" in node) before.layoutSizingVertical = (node as FrameNode).layoutSizingVertical;
@@ -422,7 +464,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_constraints": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       if (!("constraints" in node)) throw new Error(`Node ${action.nodeId} does not support constraints`);
       const before = { constraints: (node as FrameNode).constraints };
       if (action.horizontal) (node as FrameNode).constraints = { ...(node as FrameNode).constraints, horizontal: action.horizontal as ConstraintType };
@@ -431,7 +473,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_min_max_size": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const before: Record<string, unknown> = {};
       if ("minWidth" in node) before.minWidth = (node as FrameNode).minWidth;
       if ("maxWidth" in node) before.maxWidth = (node as FrameNode).maxWidth;
@@ -451,7 +493,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "switch_page": {
-      const pageNode = figma.getNodeById(action.pageId as string);
+      const pageNode = await figma.getNodeByIdAsync(action.pageId as string);
       if (!pageNode || pageNode.type !== "PAGE") throw new Error(`Node ${action.pageId} is not a page`);
       await figma.setCurrentPageAsync(pageNode as PageNode);
       return { after: { pageId: pageNode.id, pageName: pageNode.name } };
@@ -460,7 +502,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     // ─── Rich Content ─────────────────────────────────────────────
 
     case "set_gradient_fill": {
-      const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
+      const node = await findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
       const before = { fills: safeSerialize(node.fills) };
       const stops = (action.stops as Array<{ position: number; color: { r: number; g: number; b: number; a: number } }>);
       const angle = ((action.angle as number) || 0) * Math.PI / 180;
@@ -481,7 +523,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_image_fill": {
-      const node = findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
+      const node = await findSceneNode(action.nodeId as string) as GeometryMixin & SceneNode;
       const before = { fills: safeSerialize(node.fills) };
       const base64 = action.imageBase64 as string;
       const image = figma.createImage(figma.base64Decode(base64));
@@ -497,7 +539,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     // ─── Text Enhancement ─────────────────────────────────────────
 
     case "set_text_properties": {
-      const node = findSceneNode(action.nodeId as string) as TextNode;
+      const node = await findSceneNode(action.nodeId as string) as TextNode;
       const before: Record<string, unknown> = {};
       if (action.textAlignHorizontal) {
         before.textAlignHorizontal = node.textAlignHorizontal;
@@ -532,7 +574,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     // ─── Style Binding ────────────────────────────────────────────
 
     case "apply_style": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const property = action.property as string;
       const styleId = resolveId(action.styleId as string);
       if (property === "fill" && "fillStyleId" in node) {
@@ -550,7 +592,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "set_description": {
-      const node = findNode(action.nodeId as string);
+      const node = await findNode(action.nodeId as string);
       if (!("description" in node)) throw new Error(`Node ${action.nodeId} does not support descriptions`);
       const before = { description: (node as ComponentNode).description };
       (node as ComponentNode).description = action.description as string;
@@ -560,7 +602,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     // ─── Component Property Definition ────────────────────────────
 
     case "define_component_property": {
-      const node = findNode(action.nodeId as string);
+      const node = await findNode(action.nodeId as string);
       if (node.type !== "COMPONENT" && node.type !== "COMPONENT_SET") {
         throw new Error(`Node ${action.nodeId} is not a component or component set`);
       }
@@ -622,7 +664,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     }
 
     case "bind_variable": {
-      const node = findSceneNode(action.nodeId as string);
+      const node = await findSceneNode(action.nodeId as string);
       const variableId = resolveId(action.variableId as string);
       const variable = figma.variables.getVariableById(variableId);
       if (!variable) throw new Error(`Variable not found: ${variableId}`);
@@ -770,16 +812,30 @@ figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
       type: "send_to_bridge",
       data: {
         type: "handshake",
-        pluginVersion: "2.0.0",
+        pluginVersion: "2.1.0",
         pageId: figma.currentPage.id,
         pageName: figma.currentPage.name,
         documentName: figma.root.name,
       },
     });
+    figma.ui.postMessage({
+      type: "ui_status",
+      status: "connected",
+      documentName: figma.root.name,
+      pageName: figma.currentPage.name,
+      selectionCount: figma.currentPage.selection.length,
+    });
     return;
   }
 
   if (msg.type === "bridge_disconnected") {
+    figma.ui.postMessage({
+      type: "ui_status",
+      status: "disconnected",
+      documentName: figma.root.name,
+      pageName: figma.currentPage.name,
+      selectionCount: figma.currentPage.selection.length,
+    });
     return;
   }
 
@@ -810,5 +866,25 @@ figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
     }
   }
 };
+
+function pushUiContext(status: "idle" | "connected" | "disconnected" = "idle") {
+  figma.ui.postMessage({
+    type: "ui_status",
+    status,
+    documentName: figma.root.name,
+    pageName: figma.currentPage.name,
+    selectionCount: figma.currentPage.selection.length,
+  });
+}
+
+figma.on("selectionchange", () => {
+  pushUiContext();
+});
+
+figma.on("currentpagechange", () => {
+  pushUiContext();
+});
+
+pushUiContext();
 
 figma.on("close", () => {});

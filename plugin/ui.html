@@ -1,7 +1,12 @@
 <!DOCTYPE html>
 <html>
 <body>
-<div id="status" style="font:11px/1.4 system-ui;padding:8px;color:#666">Connecting...</div>
+<div id="app" style="font:12px/1.45 system-ui;padding:10px 12px;color:#1f2937;background:#f8fafc">
+  <div id="title" style="font-weight:600;color:#111827;margin-bottom:4px">SPFR Design Pipeline</div>
+  <div id="status" style="color:#475569">Connecting to local bridge...</div>
+  <div id="meta" style="margin-top:4px;color:#64748b"></div>
+  <div id="hint" style="margin-top:8px;color:#475569"></div>
+</div>
 <script>
 const PORTS = [4010, 4011, 4012, 4013, 4014];
 const RECONNECT_MS = 2000;
@@ -13,20 +18,58 @@ let portIdx = 0;
 let delay = RECONNECT_MS;
 let timer = null;
 let samePortRetries = 0;
+let lastUiStatus = { documentName: "", pageName: "", selectionCount: 0, status: "idle" };
 
 const el = document.getElementById("status");
+const meta = document.getElementById("meta");
+const hint = document.getElementById("hint");
+
+function renderStatus(state) {
+  const port = PORTS[portIdx];
+  const doc = lastUiStatus.documentName ? "File: " + lastUiStatus.documentName : "";
+  const page = lastUiStatus.pageName ? "Page: " + lastUiStatus.pageName : "";
+  const selection = typeof lastUiStatus.selectionCount === "number"
+    ? "Selection: " + lastUiStatus.selectionCount
+    : "";
+  meta.textContent = [doc, page, selection].filter(Boolean).join(" | ");
+
+  if (state === "connected") {
+    el.textContent = "Connected to bridge on port " + port;
+    el.style.color = "#15803d";
+    hint.textContent = "Fast batched writes are enabled. Keep this plugin window open while working from Claude or Codex.";
+    return;
+  }
+
+  if (state === "searching") {
+    el.textContent = "Looking for bridge on port " + port + "...";
+    el.style.color = "#1d4ed8";
+    hint.textContent = "Start Claude or Codex with the figma-design-pipeline MCP enabled, or wait while the plugin scans nearby ports.";
+    return;
+  }
+
+  if (state === "retrying") {
+    el.textContent = "Bridge not found. Retrying...";
+    el.style.color = "#b45309";
+    hint.textContent = "Fallback writes still work from the CLI, but opening the bridge enables the fastest path.";
+    return;
+  }
+
+  el.textContent = "Disconnected from local bridge";
+  el.style.color = "#b91c1c";
+  hint.textContent = "Keep this plugin open. It reconnects automatically when Claude or Codex exposes the local bridge.";
+}
 
 function connect() {
   if (ws) try { ws.close(); } catch(e) {}
   const port = PORTS[portIdx];
   const url = "ws://localhost:" + port + "/plugin";
+  renderStatus("searching");
   ws = new WebSocket(url);
 
   ws.onopen = function() {
     delay = RECONNECT_MS;
     samePortRetries = 0;
-    el.textContent = "Connected (port " + port + ")";
-    el.style.color = "#0a0";
+    renderStatus("connected");
     parent.postMessage({ pluginMessage: { type: "bridge_connected" } }, "*");
   };
 
@@ -39,16 +82,14 @@ function connect() {
   };
 
   ws.onclose = function() {
-    el.textContent = "Disconnected — reconnecting...";
-    el.style.color = "#c00";
+    renderStatus("retrying");
     ws = null;
     parent.postMessage({ pluginMessage: { type: "bridge_disconnected" } }, "*");
     scheduleReconnect();
   };
 
   ws.onerror = function() {
-    el.textContent = "Connection error — retrying...";
-    el.style.color = "#c00";
+    renderStatus("retrying");
   };
 }
 
@@ -69,6 +110,20 @@ function scheduleReconnect() {
 window.onmessage = function(e) {
   var msg = e.data.pluginMessage;
   if (!msg) return;
+  if (msg.type === "ui_status") {
+    lastUiStatus = {
+      documentName: msg.documentName || "",
+      pageName: msg.pageName || "",
+      selectionCount: msg.selectionCount || 0,
+      status: msg.status || "idle",
+    };
+    if (ws && ws.readyState === 1) {
+      renderStatus("connected");
+    } else {
+      renderStatus(lastUiStatus.status === "disconnected" ? "disconnected" : "retrying");
+    }
+    return;
+  }
   if (msg.type === "send_to_bridge" && ws && ws.readyState === 1) {
     ws.send(JSON.stringify(msg.data));
   }

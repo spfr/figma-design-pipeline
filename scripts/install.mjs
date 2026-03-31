@@ -249,6 +249,14 @@ function installClaudeCodeMcp() {
   const serverJson = JSON.stringify(buildStdioServerConfig(), null, 2);
   if (hasCommand("claude")) {
     try {
+      try {
+        execFileSync("claude", ["mcp", "remove", "--scope", "user", "figma-design-pipeline"], {
+          stdio: "ignore",
+          timeout: 15000,
+        });
+      } catch {
+        // Ignore remove failures; add-json below handles first install.
+      }
       execFileSync("claude", ["mcp", "add-json", "--scope", "user", "figma-design-pipeline", serverJson], {
         stdio: ["ignore", "inherit", "inherit"],
         timeout: 15000,

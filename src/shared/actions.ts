@@ -26,6 +26,36 @@ export const moveActionSchema = z
   })
   .strict();
 
+export const createTextActionSchema = z
+  .object({
+    type: z.literal("create_text"),
+    parentId: z.string(),
+    characters: z.string(),
+    name: z.string().optional(),
+    fontFamily: z.string().default("Inter"),
+    fontWeight: z.number().default(400),
+    fontSize: z.number().min(1).optional(),
+    lineHeight: z.number().optional(),
+    letterSpacing: z.number().optional(),
+    fills: z.array(z.object({
+      type: z.enum(["SOLID"]),
+      color: z.object({
+        r: z.number().min(0).max(1),
+        g: z.number().min(0).max(1),
+        b: z.number().min(0).max(1),
+        a: z.number().min(0).max(1).default(1),
+      }).optional(),
+      opacity: z.number().min(0).max(1).optional(),
+    })).optional(),
+    textCase: z.enum(["ORIGINAL", "UPPER", "LOWER", "TITLE"]).optional(),
+    textAlignHorizontal: z.enum(["LEFT", "CENTER", "RIGHT", "JUSTIFIED"]).optional(),
+    textAutoResize: z.enum(["NONE", "WIDTH_AND_HEIGHT", "HEIGHT", "TRUNCATE"]).optional(),
+    layoutSizingHorizontal: z.enum(["FILL", "HUG", "FIXED"]).optional(),
+    layoutSizingVertical: z.enum(["FILL", "HUG", "FIXED"]).optional(),
+    opacity: z.number().min(0).max(1).optional(),
+  })
+  .strict();
+
 export const createFrameActionSchema = z
   .object({
     type: z.literal("create_frame"),
@@ -515,6 +545,7 @@ export const actionSchema = z.discriminatedUnion("type", [
   renameActionSchema,
   moveActionSchema,
   createFrameActionSchema,
+  createTextActionSchema,
   deleteNodeActionSchema,
   resizeActionSchema,
   setPositionActionSchema,

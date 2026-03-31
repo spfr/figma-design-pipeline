@@ -222,6 +222,7 @@ Use with figma_execute({ actions: [...] }) for batch execution via the plugin br
 - set_corner_radius: { nodeId, radius? | radii?: [tl,tr,br,bl] }
 
 ## Text
+- create_text: { parentId, characters, name?, fontFamily?, fontWeight?, fontSize?, lineHeight?, letterSpacing?, fills?, textCase?, textAlignHorizontal?, textAutoResize?, layoutSizingHorizontal?, layoutSizingVertical?, opacity? } → returns newNodeId
 - set_text_content: { nodeId, characters }
 - set_text_style: { nodeId, fontFamily?, fontSize?, fontWeight?, lineHeight?, letterSpacing? }
 - **set_text_properties: { nodeId, textAlignHorizontal?, textAlignVertical?, paragraphSpacing?, textCase?, textDecoration?, textAutoResize? }**
@@ -260,7 +261,7 @@ Use with figma_execute({ actions: [...] }) for batch execution via the plugin br
 
 const server = new McpServer({
   name: "figma-design-pipeline",
-  version: "0.6.0",
+  version: "0.7.2",
 });
 
 // ─── MCP Resources ──────────────────────────────────────────────────
@@ -268,7 +269,7 @@ const server = new McpServer({
 server.resource(
   "action-reference",
   "figma://actions",
-  { mimeType: "text/markdown", description: "Schema reference for all 42 figma_execute action types. Use with figma_execute({ actions: [...] }) for batch execution." },
+  { mimeType: "text/markdown", description: "Schema reference for all 43 figma_execute action types. Use with figma_execute({ actions: [...] }) for batch execution." },
   async () => ({
     contents: [{ uri: "figma://actions", mimeType: "text/markdown", text: ACTION_REFERENCE }],
   })
@@ -506,7 +507,7 @@ server.tool(
 
 server.tool(
   "figma_execute",
-  "PREFERRED TOOL for ALL Figma write operations. Execute a batch of validated actions via plugin bridge — 30-60x faster than use_figma. Do NOT use use_figma for writes; use this tool instead. Supports 42 action types including layout, variables, pages, gradients, images, text properties, and more. If plugin not connected, returns fallback JavaScript for use_figma. Call figma_plugin_status to check connection.",
+  "PREFERRED TOOL for ALL Figma write operations. Execute a batch of validated actions via plugin bridge — 30-60x faster than use_figma. Do NOT use use_figma for writes; use this tool instead. Supports 43 action types including text creation, layout, variables, pages, gradients, images, and text properties. If plugin not connected, returns fallback JavaScript for use_figma. Call figma_plugin_status to check connection.",
   executeInputSchema.shape,
   async (params) => {
     const result = await handleExecute(bridge, {

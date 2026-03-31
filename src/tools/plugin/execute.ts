@@ -87,6 +87,14 @@ function generateFallbackJs(actions: Action[]): string {
   lines.push("  return resolved;");
   lines.push("};");
   lines.push("const getNode = (id) => figma.getNodeById(resolveRefId(id));");
+  lines.push("const sanitizePaints = (paints) => (paints || []).map((paint) => {");
+  lines.push("  if (!paint || typeof paint !== \"object\" || !paint.color || typeof paint.color !== \"object\") return paint;");
+  lines.push("  if (!(\"a\" in paint.color)) return paint;");
+  lines.push("  const { a, ...rgb } = paint.color;");
+  lines.push("  const cleaned = { ...paint, color: rgb };");
+  lines.push("  if (a !== undefined && a !== 1 && cleaned.opacity === undefined) cleaned.opacity = a;");
+  lines.push("  return cleaned;");
+  lines.push("});");
   lines.push("");
 
   for (let i = 0; i < actions.length; i++) {
@@ -108,6 +116,12 @@ function generateFallbackJs(actions: Action[]): string {
       case "create_frame":
         lines.push(`{ const f = figma.createFrame(); f.name = ${j(a.name)}; f.resize(${a.width}, ${a.height}); ${g(a.parentId)}.appendChild(f); f.x = ${a.x}; f.y = ${a.y}; results.push({ type: "create_frame", nodeId: f.id }); }`);
         break;
+      case "create_text": {
+        const fam = a.fontFamily || "Inter";
+        const sty = weightToStyle(a.fontWeight || 400);
+        lines.push(`{ const t = figma.createText(); await figma.loadFontAsync({ family: "${fam}", style: "${sty}" }); t.fontName = { family: "${fam}", style: "${sty}" }; t.characters = ${j(a.characters)}; ${a.name ? `t.name = ${j(a.name)};` : ""} ${a.fontSize !== undefined ? `t.fontSize = ${a.fontSize};` : ""} ${a.lineHeight !== undefined ? `t.lineHeight = { value: ${a.lineHeight}, unit: "PIXELS" };` : ""} ${a.letterSpacing !== undefined ? `t.letterSpacing = { value: ${a.letterSpacing}, unit: "PIXELS" };` : ""} ${a.fills ? `t.fills = sanitizePaints(${j(a.fills)});` : ""} ${a.textCase ? `t.textCase = "${a.textCase}";` : ""} ${a.textAlignHorizontal ? `t.textAlignHorizontal = "${a.textAlignHorizontal}";` : ""} ${a.textAutoResize ? `t.textAutoResize = "${a.textAutoResize}";` : ""} ${a.opacity !== undefined ? `t.opacity = ${a.opacity};` : ""} ${g(a.parentId)}.appendChild(t); ${a.layoutSizingHorizontal ? `t.layoutSizingHorizontal = "${a.layoutSizingHorizontal}";` : ""} ${a.layoutSizingVertical ? `t.layoutSizingVertical = "${a.layoutSizingVertical}";` : ""} results.push({ type: "create_text", nodeId: t.id }); }`);
+        break;
+      }
       case "delete_node":
         lines.push(`{ ${g(nid)}.remove(); ${r("delete_node")} }`);
         break;
@@ -148,7 +162,7 @@ function generateFallbackJs(actions: Action[]): string {
         lines.push(`{ const n = ${g(nid)}; ${a.minWidth !== undefined ? `n.minWidth = ${a.minWidth};` : ""} ${a.maxWidth !== undefined ? `n.maxWidth = ${a.maxWidth};` : ""} ${a.minHeight !== undefined ? `n.minHeight = ${a.minHeight};` : ""} ${a.maxHeight !== undefined ? `n.maxHeight = ${a.maxHeight};` : ""} ${r("set_min_max_size")} }`);
         break;
       case "set_fills":
-        lines.push(`{ ${g(nid)}.fills = ${j(a.fills)}; ${r("set_fills")} }`);
+        lines.push(`{ ${g(nid)}.fills = sanitizePaints(${j(a.fills)}); ${r("set_fills")} }`);
         break;
       case "set_gradient_fill":
         lines.push(`{ const n = ${g(nid)}; n.fills = [{ type: "GRADIENT_${a.gradientType || "LINEAR"}", gradientStops: ${j(a.stops)}, gradientTransform: [[1,0,0],[0,1,0]] }]; ${r("set_gradient_fill")} }`);
@@ -157,7 +171,7 @@ function generateFallbackJs(actions: Action[]): string {
         lines.push(`{ const img = figma.createImage(figma.base64Decode(${j(a.imageBase64)})); ${g(nid)}.fills = [{ type: "IMAGE", imageHash: img.hash, scaleMode: "${a.scaleMode || "FILL"}" }]; ${r("set_image_fill")} }`);
         break;
       case "set_strokes":
-        lines.push(`{ const n = ${g(nid)}; n.strokes = ${j(a.strokes)}; ${a.strokeWeight !== undefined ? `n.strokeWeight = ${a.strokeWeight};` : ""} ${r("set_strokes")} }`);
+        lines.push(`{ const n = ${g(nid)}; n.strokes = sanitizePaints(${j(a.strokes)}); ${a.strokeWeight !== undefined ? `n.strokeWeight = ${a.strokeWeight};` : ""} ${r("set_strokes")} }`);
         break;
       case "set_effects":
         lines.push(`{ ${g(nid)}.effects = ${j(a.effects)}; ${r("set_effects")} }`);
@@ -196,7 +210,7 @@ function generateFallbackJs(actions: Action[]): string {
         lines.push(`{ ${g(nid)}.addComponentProperty(${j(a.propertyName)}, "${a.propertyType}", ${j(a.defaultValue)}); ${r("define_component_property")} }`);
         break;
       case "create_paint_style":
-        lines.push(`{ const s = figma.createPaintStyle(); s.name = ${j(a.name)}; s.paints = ${j(a.paints)}; results.push({ type: "create_paint_style", nodeId: s.id }); }`);
+        lines.push(`{ const s = figma.createPaintStyle(); s.name = ${j(a.name)}; s.paints = sanitizePaints(${j(a.paints)}); results.push({ type: "create_paint_style", nodeId: s.id }); }`);
         break;
       case "create_text_style":
         lines.push(`{ const s = figma.createTextStyle(); s.name = ${j(a.name)}; s.fontName = { family: "${a.fontFamily}", style: "${weightToStyle(a.fontWeight ?? 400)}" }; s.fontSize = ${a.fontSize}; ${a.lineHeight !== undefined ? `s.lineHeight = { value: ${a.lineHeight}, unit: "PIXELS" };` : ""} results.push({ type: "create_text_style", nodeId: s.id }); }`);

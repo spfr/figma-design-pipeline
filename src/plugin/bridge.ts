@@ -4,10 +4,16 @@ import { randomUUID } from "node:crypto";
 
 export interface BridgeStatus {
   connected: boolean;
+  mode: "plugin" | "fallback";
   port: number | null;
   pluginVersion?: string;
   pageName?: string;
   documentName?: string;
+  fallbackAvailable: boolean;
+  message: string;
+  recommendedAction?: string;
+  lastHandshakeAt?: string;
+  lastPongAt?: string;
   pendingBatches: number;
 }
 
@@ -53,6 +59,9 @@ export class BridgeServer {
   private boundPort: number | null = null;
   private pending = new Map<string, PendingBatch>();
   private pluginInfo: { pluginVersion?: string; pageName?: string; documentName?: string } = {};
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private lastHandshakeAt: string | null = null;
+  private lastPongAt: string | null = null;
 
   async start(preferredPort = 4010): Promise<number> {
     for (let port = preferredPort; port < preferredPort + 5; port++) {
@@ -84,6 +93,7 @@ export class BridgeServer {
         }
         this.plugin = ws;
         console.error(`[bridge] Plugin connected on port ${port}`);
+        this.startPingLoop();
 
         ws.on("message", (raw) => {
           try {
@@ -98,6 +108,9 @@ export class BridgeServer {
           if (this.plugin === ws) {
             this.plugin = null;
             this.pluginInfo = {};
+            this.lastHandshakeAt = null;
+            this.lastPongAt = null;
+            this.stopPingLoop();
             // Snapshot and clear before rejecting to avoid double-rejection race with timeouts
             const inFlight = new Map(this.pending);
             this.pending.clear();
@@ -126,6 +139,7 @@ export class BridgeServer {
         pageName: data.pageName as string,
         documentName: data.documentName as string,
       };
+      this.lastHandshakeAt = new Date().toISOString();
       console.error(`[bridge] Handshake: ${this.pluginInfo.documentName} / ${this.pluginInfo.pageName} (plugin v${this.pluginInfo.pluginVersion})`);
       return;
     }
@@ -143,7 +157,30 @@ export class BridgeServer {
 
     if (data.type === "pong") {
       this.pluginInfo.pageName = data.pageName as string;
+      this.pluginInfo.documentName = (data.documentName as string) || this.pluginInfo.documentName;
+      this.lastPongAt = new Date().toISOString();
       return;
+    }
+  }
+
+  private startPingLoop(): void {
+    this.stopPingLoop();
+    this.pingTimer = setInterval(() => {
+      if (!this.plugin || this.plugin.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      try {
+        this.plugin.send(JSON.stringify({ type: "ping" }));
+      } catch {
+        // Ignore send errors; close handler will clear state.
+      }
+    }, 5000);
+  }
+
+  private stopPingLoop(): void {
+    if (this.pingTimer) {
+      clearInterval(this.pingTimer);
+      this.pingTimer = null;
     }
   }
 
@@ -171,10 +208,23 @@ export class BridgeServer {
   }
 
   getStatus(): BridgeStatus {
+    const connected = this.isConnected();
+    const message = connected
+      ? `Plugin connected on port ${this.boundPort}${this.pluginInfo.documentName ? ` for ${this.pluginInfo.documentName}` : ""}${this.pluginInfo.pageName ? ` / ${this.pluginInfo.pageName}` : ""}.`
+      : "Plugin bridge is not connected. figma_execute will return fallback use_figma JavaScript.";
+
     return {
-      connected: this.isConnected(),
+      connected,
+      mode: connected ? "plugin" : "fallback",
       port: this.boundPort,
+      fallbackAvailable: true,
+      message,
+      recommendedAction: connected
+        ? "Use figma_execute for batched writes."
+        : "Open the SPFR Design Pipeline plugin in Figma Desktop to enable fast batched writes.",
       ...this.pluginInfo,
+      lastHandshakeAt: this.lastHandshakeAt ?? undefined,
+      lastPongAt: this.lastPongAt ?? undefined,
       pendingBatches: this.pending.size,
     };
   }
@@ -185,6 +235,7 @@ export class BridgeServer {
       p.reject(new Error("Bridge shutting down"));
     }
     this.pending.clear();
+    this.stopPingLoop();
     if (this.plugin) { try { this.plugin.close(); } catch { /* ignore */ } }
     if (this.wss) this.wss.close();
     if (this.httpServer) {
