@@ -1,6 +1,7 @@
 import type { BridgeServer, BatchResult } from "../../plugin/bridge.js";
 import { compileBatch } from "../../plugin/batch-compiler.js";
 import { actionSchema, type Action } from "../../shared/actions.js";
+import { weightToFontStyle } from "../../shared/font.js";
 
 interface ExecuteParams {
   actions: unknown[];
@@ -115,10 +116,5 @@ function generateFallbackJs(actions: Action[]): string {
   return lines.join("\n");
 }
 
-function weightToStyle(weight: number): string {
-  const map: Record<number, string> = {
-    100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular",
-    500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
-  };
-  return map[Math.round(weight / 100) * 100] || "Regular";
-}
+// Re-export for local use — canonical source is src/shared/font.ts
+const weightToStyle = weightToFontStyle;

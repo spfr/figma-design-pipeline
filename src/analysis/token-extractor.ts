@@ -30,6 +30,7 @@ export function extractTokens(
   const seenFonts = new Set<string>();
   const seenSpacing = new Set<number>();
   const seenRadii = new Set<number>();
+  const seenShadows = new Set<string>();
   const seenOpacities = new Set<number>();
   const typeSet = new Set(types);
 
@@ -103,11 +104,15 @@ export function extractTokens(
     if (typeSet.has("shadow")) {
       for (const effect of node.effects || []) {
         if (effect.type === "DROP_SHADOW" && effect.visible) {
-          result.shadows.push({
-            type: "shadow",
-            raw: `${effect.radius || 0}px`,
-            tailwind: mapShadowToTailwind(effect.radius || 0),
-          });
+          const shadowKey = `${effect.radius || 0}|${effect.color?.r ?? 0}|${effect.color?.g ?? 0}|${effect.color?.b ?? 0}|${effect.offset?.x ?? 0}|${effect.offset?.y ?? 0}`;
+          if (!seenShadows.has(shadowKey)) {
+            seenShadows.add(shadowKey);
+            result.shadows.push({
+              type: "shadow",
+              raw: `${effect.radius || 0}px`,
+              tailwind: mapShadowToTailwind(effect.radius || 0),
+            });
+          }
         }
       }
     }

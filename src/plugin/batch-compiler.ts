@@ -1,9 +1,5 @@
 import type { Action } from "../shared/actions.js";
-
-const WEIGHT_TO_STYLE: Record<number, string> = {
-  100: "Thin", 200: "ExtraLight", 300: "Light", 400: "Regular",
-  500: "Medium", 600: "SemiBold", 700: "Bold", 800: "ExtraBold", 900: "Black",
-};
+import { WEIGHT_TO_STYLE } from "../shared/font.js";
 
 interface CompiledBatch {
   dryRun: boolean;

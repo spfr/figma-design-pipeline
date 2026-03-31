@@ -98,12 +98,13 @@ export class BridgeServer {
           if (this.plugin === ws) {
             this.plugin = null;
             this.pluginInfo = {};
-            // Reject all in-flight batches immediately
-            for (const [id, p] of this.pending) {
+            // Snapshot and clear before rejecting to avoid double-rejection race with timeouts
+            const inFlight = new Map(this.pending);
+            this.pending.clear();
+            for (const [, p] of inFlight) {
               clearTimeout(p.timer);
               p.reject(new Error("Plugin disconnected mid-batch"));
             }
-            this.pending.clear();
             console.error("[bridge] Plugin disconnected");
           }
         });

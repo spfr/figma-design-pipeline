@@ -596,12 +596,15 @@ async function executeAction(action: Record<string, unknown>): Promise<{
       // Set value for each mode
       const value = action.value;
       if (action.resolvedType === "COLOR" && typeof value === "string") {
-        // Parse hex to Figma color
-        const hex = (value as string).replace("#", "");
-        const r = parseInt(hex.substring(0, 2), 16) / 255;
-        const g = parseInt(hex.substring(2, 4), 16) / 255;
-        const b = parseInt(hex.substring(4, 6), 16) / 255;
-        const a = hex.length === 8 ? parseInt(hex.substring(6, 8), 16) / 255 : 1;
+        // Parse hex to Figma color (supports #RGB, #RRGGBB, #RRGGBBAA)
+        const cleaned = (value as string).replace("#", "");
+        const expanded = cleaned.length === 3
+          ? cleaned.split("").map(c => c + c).join("")
+          : cleaned;
+        const r = parseInt(expanded.substring(0, 2), 16) / 255;
+        const g = parseInt(expanded.substring(2, 4), 16) / 255;
+        const b = parseInt(expanded.substring(4, 6), 16) / 255;
+        const a = expanded.length === 8 ? parseInt(expanded.substring(6, 8), 16) / 255 : 1;
         for (const mode of collection.modes) {
           variable.setValueForMode(mode.modeId, { r, g, b, a });
         }
@@ -678,7 +681,8 @@ async function processBatch(batch: Batch): Promise<BatchResult> {
   let stopProcessing = false;
 
   for (let i = 0; i < batch.actions.length; i++) {
-    const action = batch.actions[i];
+    // Shallow copy to avoid mutating the original batch payload
+    const action = { ...batch.actions[i] };
     const actionType = action.type as string;
 
     if (stopProcessing) {

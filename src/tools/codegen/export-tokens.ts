@@ -76,22 +76,10 @@ function rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: n
   return { h: h * 360, s, l };
 }
 
-function hexLightness(hex: string): number {
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const rgb = hexToRgb(hex);
-  if (!rgb) return 0.5;
-  return rgbToHsl(rgb.r, rgb.g, rgb.b).l;
-}
-
-function hexHue(hex: string): number {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return 0;
-  return rgbToHsl(rgb.r, rgb.g, rgb.b).h;
-}
-
-function hexSaturation(hex: string): number {
-  const rgb = hexToRgb(hex);
-  if (!rgb) return 0;
-  return rgbToHsl(rgb.r, rgb.g, rgb.b).s;
+  if (!rgb) return { h: 0, s: 0, l: 0.5 };
+  return rgbToHsl(rgb.r, rgb.g, rgb.b);
 }
 
 function hueBucketName(hue: number, saturation: number): string {
@@ -112,9 +100,10 @@ function groupColorsByHue(colors: Array<{ raw: string | number }>): Record<strin
   for (const token of colors) {
     const hex = String(token.raw);
     if (!hex.startsWith("#")) continue;
-    const name = hueBucketName(hexHue(hex), hexSaturation(hex));
+    const { h, s, l } = hexToHsl(hex);
+    const name = hueBucketName(h, s);
     if (!buckets[name]) buckets[name] = [];
-    buckets[name].push({ hex, lightness: hexLightness(hex) });
+    buckets[name].push({ hex, lightness: l });
   }
 
   const result: Record<string, string> = {};
@@ -223,7 +212,7 @@ function emitCssVariables(tokens: {
 
   // Colors ordered by lightness
   const colorEntries = tokens.colors
-    .map(t => ({ hex: String(t.raw), lightness: hexLightness(String(t.raw)) }))
+    .map(t => ({ hex: String(t.raw), lightness: hexToHsl(String(t.raw)).l }))
     .filter(c => c.hex.startsWith("#"))
     .sort((a, b) => a.lightness - b.lightness);
   lines.push("  /* Colors (dark to light) */");
@@ -280,7 +269,7 @@ function emitStyleDictionary(tokens: {
   const output: Record<string, Record<string, { $value: string; $type: string }>> = {};
 
   const colorEntries = tokens.colors
-    .map(t => ({ hex: String(t.raw), lightness: hexLightness(String(t.raw)) }))
+    .map(t => ({ hex: String(t.raw), lightness: hexToHsl(String(t.raw)).l }))
     .filter(c => c.hex.startsWith("#"))
     .sort((a, b) => a.lightness - b.lightness);
   if (colorEntries.length > 0) {
