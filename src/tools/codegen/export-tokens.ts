@@ -5,7 +5,7 @@ import { handleExtractTokens } from "../inspect/extract-tokens.js";
 interface ExportTokensParams {
   figmaUrl?: string;
   nodeId?: string;
-  format?: "tailwind" | "css" | "json";
+  format?: "tailwind" | "css" | "json" | "style-dictionary";
 }
 
 export async function handleExportTokens(
@@ -38,6 +38,9 @@ export async function handleExportTokens(
         content: JSON.stringify(tokens, null, 2),
         type: "json",
       };
+      break;
+    case "style-dictionary":
+      file = emitStyleDictionary(tokens);
       break;
     default:
       throw new Error(`Unsupported format: ${format}`);
@@ -135,5 +138,64 @@ function emitCssVariables(tokens: {
     path: "figma-tokens.css",
     content: lines.join("\n"),
     type: "css",
+  };
+}
+
+function emitStyleDictionary(tokens: {
+  colors: Array<{ raw: string | number }>;
+  fonts: Array<{ raw: string | number }>;
+  spacing: Array<{ raw: string | number }>;
+  radii: Array<{ raw: string | number }>;
+  shadows: Array<{ raw: string | number }>;
+  opacities: Array<{ raw: string | number }>;
+}): GeneratedFile {
+  const output: Record<string, unknown> = {};
+
+  // Colors in W3C DTCG format
+  if (tokens.colors.length > 0) {
+    const colors: Record<string, unknown> = {};
+    for (let i = 0; i < tokens.colors.length; i++) {
+      colors[`color-${i + 1}`] = { "$value": String(tokens.colors[i].raw), "$type": "color" };
+    }
+    output.color = colors;
+  }
+
+  // Spacing
+  if (tokens.spacing.length > 0) {
+    const spacing: Record<string, unknown> = {};
+    const sorted = [...tokens.spacing].sort((a, b) => Number(a.raw) - Number(b.raw));
+    for (const token of sorted) {
+      spacing[`space-${token.raw}`] = { "$value": `${token.raw}px`, "$type": "dimension" };
+    }
+    output.spacing = spacing;
+  }
+
+  // Typography
+  if (tokens.fonts.length > 0) {
+    const typography: Record<string, unknown> = {};
+    for (let i = 0; i < tokens.fonts.length; i++) {
+      const parts = String(tokens.fonts[i].raw).split("|");
+      typography[`type-${i + 1}`] = {
+        "$value": { fontFamily: parts[0] || "", fontSize: `${parts[1] || 16}px`, fontWeight: Number(parts[2]) || 400 },
+        "$type": "typography",
+      };
+    }
+    output.typography = typography;
+  }
+
+  // Border radius
+  if (tokens.radii.length > 0) {
+    const radii: Record<string, unknown> = {};
+    const sorted = [...tokens.radii].sort((a, b) => Number(a.raw) - Number(b.raw));
+    for (const token of sorted) {
+      radii[`radius-${token.raw}`] = { "$value": `${token.raw}px`, "$type": "dimension" };
+    }
+    output.borderRadius = radii;
+  }
+
+  return {
+    path: "design-tokens.json",
+    content: JSON.stringify(output, null, 2),
+    type: "json",
   };
 }

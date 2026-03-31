@@ -348,7 +348,7 @@ export const exportTokensInputSchema = z.object({
   figmaUrl: figmaUrlField,
   nodeId: z.string().optional().describe("Root node ID to export tokens from. Auto-extracted from figmaUrl if provided."),
   format: z
-    .enum(["tailwind", "css", "json"])
+    .enum(["tailwind", "css", "json", "style-dictionary"])
     .default("tailwind")
     .describe("Export format for tokens"),
 });

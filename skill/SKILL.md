@@ -115,11 +115,68 @@ When a design system needs to be created in Figma, provide this structure to the
 
 ### Figma Best Practices
 - Auto-layout everywhere, never absolute positioning
+- After `set_layout_mode`, always set `set_child_layout_sizing` on every child (FILL/HUG/FIXED)
+- Use `set_constraints` for responsive pinning, `set_min_max_size` for responsive boundaries
 - Slash naming: `Button/Primary/Default`, `Section/Hero`
-- Create styles (paint, text, effect) — not raw color values
+- Create styles then `apply_style` to bind them — not raw color values
+- Use `set_description` on every component for documentation
 - 60-30-10 color rule (neutral/primary/accent)
 - WCAG AA contrast: 4.5:1 normal text, 3:1 large text
 - Minimum 44x44px touch targets
+
+### Variant Naming Convention
+Before `create_component_set`, name each component with property pairs:
+`"Size=sm, State=default, Style=primary"` — Figma derives the Properties panel from these names.
+
+After creating a component, use `define_component_property` for exposed Text/Boolean/InstanceSwap props.
+
+## Design Constants
+
+Use these exact values — do not improvise alternatives.
+
+### Type Scale
+| Name | Size / Line-height | Letter-spacing | Weight | Notes |
+|------|-------------------|----------------|--------|-------|
+| Display | 72px / 80px | -1.5px | 700 | |
+| H1 | 48px / 56px | -1px | 700 | |
+| H2 | 36px / 44px | -0.5px | 600 | |
+| H3 | 28px / 36px | 0 | 600 | |
+| H4 | 22px / 32px | 0 | 600 | |
+| Body Large | 18px / 28px | 0 | 400 | |
+| Body | 16px / 24px | 0 | 400 | |
+| Body Small | 14px / 20px | 0 | 400 | |
+| Caption | 12px / 16px | 0.4px | 400 | |
+| Overline | 11px / 16px | 1.5px | 500 | UPPERCASE |
+
+### Elevation Scale
+- Level 1 (cards): `{ type: "DROP_SHADOW", radius: 3, color: {r:0,g:0,b:0,a:0.12}, offset: {x:0,y:1} }`
+- Level 2 (dropdowns): `{ type: "DROP_SHADOW", radius: 6, color: {r:0,g:0,b:0,a:0.10}, offset: {x:0,y:4} }`
+- Level 3 (modals): `{ type: "DROP_SHADOW", radius: 15, color: {r:0,g:0,b:0,a:0.12}, offset: {x:0,y:10} }`
+- Level 4 (toasts): `{ type: "DROP_SHADOW", radius: 25, color: {r:0,g:0,b:0,a:0.15}, offset: {x:0,y:20} }`
+
+### Spacing Scale (4px base)
+4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96
+
+### Border Radius
+sm: 4px (inputs, badges), md: 8px (cards, buttons), lg: 12px (modals), xl: 16px (large cards), 2xl: 24px (hero), full: 9999px (pills, avatars)
+
+### Child Layout Sizing Patterns
+After `set_layout_mode`, always specify sizing on children:
+- Button label: HUG / HUG
+- Button container: HUG / HUG
+- Card content area: FILL / HUG
+- Sidebar: FIXED width / FILL height
+- Main content: FILL / FILL
+- Table cell: FILL / HUG
+- Chart placeholder: FILL / FIXED height
+
+## Page Organization
+When creating a full design file, create pages with `create_page` + `switch_page`:
+1. **Cover** — title, version, status
+2. **Design Tokens** — color, typography, spacing documentation
+3. **Components** — atoms, molecules, organisms
+4. **Patterns** — common layout compositions
+5. **[Feature]** — actual screen designs
 
 ## Page Layout Patterns
 
@@ -136,12 +193,40 @@ Footer → Brand + Link columns + Social + Legal
 ```
 Section padding: 80px vertical, content max-width 1280px.
 
-### Dashboard
+### Dashboard (1440px wide)
 ```
-Top Bar (h:64) → Breadcrumb + Actions
-Metrics Row → 3-4 cards (value + label + trend)
-Charts → Main (2/3) + Side (1/3)
-Data Table → Header + Rows + Pagination
+Top Bar (h:64, horizontal, FILL width)
+  → Breadcrumb (HUG) + Spacer (FILL) + Date Picker + Export Btn + Avatar
+
+Metrics Row (horizontal, gap:16, wrap)
+  → Metric Card x4 (min-w:240, FILL)
+    vertical, padding:20, radius:md, Level 1 shadow
+    - Label (Caption, UPPERCASE, text-secondary)
+    - Value Row: H2 number + Trend Badge (▲12% green / ▼3% red)
+    - Sparkline (h:32, FILL width)
+
+Charts Row (horizontal, gap:16)
+  → Main Chart (2/3, h:360, radius:lg, Level 1 shadow)
+    - Header: Title (H4) + Spacer + Period Tabs
+    - Chart Area (FILL/FILL, placeholder with grid lines)
+    - Legend (horizontal, colored dots + labels)
+  → Side Chart (1/3, h:360, donut/bar placeholder)
+
+Data Table (FILL, radius:lg, Level 1 shadow)
+  → Header Row (h:48, bg:neutral-50)
+    Checkbox + Column headers (Caption, font-medium) + Sort icons
+  → Body Rows x8 (h:52, border-bottom:neutral-200)
+    Checkbox + Data (Body Small) + Status Badge (radius:full) + Action icons
+  → Footer (h:52): "Showing 1-10 of 234" + Pagination
+```
+
+### Settings Page
+```
+Horizontal, FILL/FILL
+  → Sidebar (w:240, vertical, border-right)
+    Section labels (Overline) + Nav items (icon + label, h:36)
+  → Content (FILL, vertical, padding:32 48, gap:32)
+    Page header + Form sections (2-col grid) + Danger zone + Save footer
 ```
 
 ## Token Sync & Code Generation
