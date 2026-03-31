@@ -253,7 +253,7 @@ Use with figma_execute({ actions: [...] }) for batch execution via the plugin br
 ## Export
 - export_node: { nodeId, format?, scale? }
 
-**Bold** = new in v0.7. Use $ref:node-N for chaining created node IDs within a batch.
+**Bold** = added in this release. Use $ref:node-N for chaining created node IDs within a batch.
 `;
 
 // ─── MCP Server ─────────────────────────────────────────────────────
@@ -268,7 +268,7 @@ const server = new McpServer({
 server.resource(
   "action-reference",
   "figma://actions",
-  { mimeType: "text/markdown", description: "Figma Plugin API patterns for generating use_figma JavaScript code." },
+  { mimeType: "text/markdown", description: "Schema reference for all 42 figma_execute action types. Use with figma_execute({ actions: [...] }) for batch execution." },
   async () => ({
     contents: [{ uri: "figma://actions", mimeType: "text/markdown", text: ACTION_REFERENCE }],
   })
@@ -506,7 +506,7 @@ server.tool(
 
 server.tool(
   "figma_execute",
-  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 43 action types including layout (set_child_layout_sizing, set_constraints), variables (create_variable, bind_variable), pages (create_page, switch_page), gradients, images, text properties, and more. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
+  "Execute a batch of validated Figma actions via the plugin bridge (30-60x faster than use_figma). Supports 42 action types including layout (set_child_layout_sizing, set_constraints), variables (create_variable, bind_variable), pages (create_page, switch_page), gradients, images, text properties, and more. If the plugin is not connected, returns fallback JavaScript for use_figma. Use figma_plugin_status to check connection.",
   executeInputSchema.shape,
   async (params) => {
     const result = await handleExecute(bridge, {

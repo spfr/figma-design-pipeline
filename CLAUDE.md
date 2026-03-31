@@ -32,7 +32,7 @@ AI Agent (Claude Code / Codex / Gemini)
     │   ├─ Codegen tools: map-components, generate-page, export-tokens
     │   └─ Plugin bridge (WebSocket, port 4010-4014)
     │         ↕ WebSocket
-    │       Figma Plugin (batch executor, 27 action types)
+    │       Figma Plugin (batch executor, 42 action types)
     │
     └─ Browser Tools ───────→ Website capture & analysis
 ```
@@ -50,7 +50,7 @@ Two esbuild bundles:
 
 ### Source Layout
 
-- `src/index.ts` — MCP server entry point, registers 17 tools and workflow resources
+- `src/index.ts` — MCP server entry point, registers 18 tools and workflow resources
 - `src/tools/` — MCP tool implementations:
   - `inspect/` — read-only (get-tree, audit, extract-tokens, export-images, find-nodes, get-components, get-styles, diff-tokens)
   - `organize/` — planning (rename-plan, group-plan, layout-plan, component-plan)

@@ -439,7 +439,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
       if (action.maxWidth !== undefined) (node as FrameNode).maxWidth = action.maxWidth as number;
       if (action.minHeight !== undefined) (node as FrameNode).minHeight = action.minHeight as number;
       if (action.maxHeight !== undefined) (node as FrameNode).maxHeight = action.maxHeight as number;
-      return { before, after: { minWidth: (node as FrameNode).minWidth, maxWidth: (node as FrameNode).maxWidth } };
+      return { before, after: { minWidth: (node as FrameNode).minWidth, maxWidth: (node as FrameNode).maxWidth, minHeight: (node as FrameNode).minHeight, maxHeight: (node as FrameNode).maxHeight } };
     }
 
     // ─── Page Management ──────────────────────────────────────────
@@ -521,7 +521,12 @@ async function executeAction(action: Record<string, unknown>): Promise<{
         before.textAutoResize = node.textAutoResize;
         node.textAutoResize = action.textAutoResize as "NONE" | "WIDTH_AND_HEIGHT" | "HEIGHT" | "TRUNCATE";
       }
-      return { before, after: { textAlignHorizontal: node.textAlignHorizontal } };
+      return { before, after: {
+        textAlignHorizontal: node.textAlignHorizontal,
+        textAlignVertical: node.textAlignVertical,
+        paragraphSpacing: node.paragraphSpacing,
+        textAutoResize: node.textAutoResize,
+      } };
     }
 
     // ─── Style Binding ────────────────────────────────────────────
@@ -757,11 +762,8 @@ async function processBatch(batch: Batch): Promise<BatchResult> {
 
 // ─── Message Handler ────────────────────────────────────────────
 
-let bridgeConnected = false;
-
 figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
   if (msg.type === "bridge_connected") {
-    bridgeConnected = true;
     // Clear font cache on reconnect (fonts may have changed between sessions)
     loadedFonts.clear();
     figma.ui.postMessage({
@@ -778,7 +780,6 @@ figma.ui.onmessage = async (msg: { type: string; data?: unknown }) => {
   }
 
   if (msg.type === "bridge_disconnected") {
-    bridgeConnected = false;
     return;
   }
 
