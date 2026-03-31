@@ -2,68 +2,68 @@
 
 This package is published on **npmjs.com** as `@spicefactory/figma-design-pipeline`.
 
-## npm
+## What Ships
 
-The package is self-contained:
+- `dist/index.js` — standalone MCP server bundle (includes WebSocket bridge)
+- `plugin/dist/` — Figma plugin (code.js, ui.html, manifest.json)
+- `skill/` — design assistant skill
+- `scripts/install.mjs` — client installer + plugin deployer
+- `scripts/build-server.mjs`, `scripts/build-plugin.mjs` — build scripts (for source installs)
 
-- `dist/index.js` is a standalone MCP server bundle
-- `skill/` contains the design assistant skill
-
-Before publishing:
+## Before Publishing
 
 ```bash
 npm install
 npm run check
 npm test
-npm pack
+npm run build          # builds server + plugin
+npm pack               # verify package contents
 ```
 
-### npm Trusted Publisher Setup
+Verify the plugin dist is included:
+```bash
+tar tzf *.tgz | grep plugin
+```
 
-In npm, configure a trusted publisher for this package with these values:
+## npm Trusted Publisher
 
-- npm package: `@spicefactory/figma-design-pipeline`
-- GitHub owner: `spfr`
-- GitHub repository: `figma-design-pipeline`
-- Workflow file: `.github/workflows/publish-npm.yml`
-- Trigger: tag push or manual workflow dispatch
+- Package: `@spicefactory/figma-design-pipeline`
+- GitHub: `spfr/figma-design-pipeline`
+- Workflow: `.github/workflows/publish-npm.yml`
+- Trigger: tag push `figma-design-pipeline-v*` or manual dispatch
 
-The GitHub workflow is already configured with:
+`prepack` runs `npm run build` (server + plugin) automatically.
 
-- `permissions.id-token: write`
-- `actions/setup-node` pointed at `https://registry.npmjs.org`
-- `npm publish --provenance --access public`
-
-### Release Trigger
-
-Create and push a tag:
+## Release
 
 ```bash
-git tag figma-design-pipeline-v0.6.0
-git push origin figma-design-pipeline-v0.6.0
+npm version <next-version> --no-git-tag-version
+git add package.json package-lock.json
+git commit -m "Release <next-version>"
+git push origin main
+git tag figma-design-pipeline-v<next-version>
+git push origin figma-design-pipeline-v<next-version>
 ```
 
-`prepack` runs `npm run build` automatically.
-
-### Install Command
+## Install Command
 
 ```bash
 npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
-Important: test that command from outside this repository.
+This installs: MCP server registration, skill symlink, and Figma plugin to `~/.figma-design-pipeline/plugin/`.
 
-### Release Verification
+## Verification
 
 ```bash
 cd /tmp
 npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --help
 ```
 
-Then test a clean-home install:
-
+Clean-home test:
 ```bash
 TMP_HOME="$(mktemp -d)"
 cd /tmp
 HOME="$TMP_HOME" npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+ls "$TMP_HOME/.figma-design-pipeline/plugin/manifest.json"
 ```
