@@ -13,13 +13,17 @@ const repoSkillDir = resolve(repoRoot, "skills", "figma-design-pipeline");
 const skillDir = existsSync(bundledSkillDir) ? bundledSkillDir : repoSkillDir;
 const distDir = resolve(packageDir, "dist");
 const serverBundlePath = resolve(distDir, "index.js");
+const installRootDir = resolve(os.homedir(), ".figma-design-pipeline");
+const installedServerDir = resolve(installRootDir, "server");
+const installedServerBundlePath = resolve(installedServerDir, "index.js");
+const installedSkillDir = resolve(installRootDir, "skill");
 const codexConfigPath = resolve(os.homedir(), ".codex", "config.toml");
 const codexSkillDir = resolve(os.homedir(), ".codex", "skills", "figma-design-pipeline");
 const agentsSkillDir = resolve(os.homedir(), ".agents", "skills", "figma-design-pipeline");
 const geminiSkillDir = resolve(os.homedir(), ".gemini", "skills", "figma-design-pipeline");
 const claudeSkillDir = resolve(os.homedir(), ".claude", "skills", "figma-design-pipeline");
 const pluginSourceDir = resolve(packageDir, "plugin", "dist");
-const pluginInstallDir = resolve(os.homedir(), ".figma-design-pipeline", "plugin");
+const pluginInstallDir = resolve(installRootDir, "plugin");
 
 const args = process.argv.slice(2);
 const options = {
@@ -58,11 +62,38 @@ if (!knownClients.has(options.client)) {
 
 ensureBuildArtifacts();
 
+const needsStableSkill = !options.skipSkill && matches(
+  options.client,
+  "claude",
+  "claude-code",
+  "gemini",
+  "gemini-cli",
+  "codex",
+  "codex-cli"
+);
+const needsStableServer = !options.skipMcp && matches(
+  options.client,
+  "claude",
+  "claude-code",
+  "gemini",
+  "gemini-cli",
+  "codex",
+  "codex-cli"
+);
+
+if (needsStableSkill) {
+  deployDirectory(skillDir, installedSkillDir);
+}
+
+if (needsStableServer) {
+  deployServerBundle();
+}
+
 const installed = [];
 
 if (matches(options.client, "claude", "claude-code")) {
   if (!options.skipSkill) {
-    linkSkill(skillDir, claudeSkillDir);
+    linkSkill(installedSkillDir, claudeSkillDir);
     installed.push(`Claude skill -> ${claudeSkillDir}`);
   }
   if (!options.skipMcp) {
@@ -73,7 +104,7 @@ if (matches(options.client, "claude", "claude-code")) {
 
 if (matches(options.client, "gemini", "gemini-cli")) {
   if (!options.skipSkill) {
-    linkSkill(skillDir, geminiSkillDir);
+    linkSkill(installedSkillDir, geminiSkillDir);
     installed.push(`Gemini skill -> ${geminiSkillDir}`);
   }
   if (!options.skipMcp) {
@@ -84,7 +115,7 @@ if (matches(options.client, "gemini", "gemini-cli")) {
 
 if (matches(options.client, "codex", "codex-cli")) {
   if (!options.skipSkill) {
-    linkSkill(skillDir, codexSkillDir);
+    linkSkill(installedSkillDir, codexSkillDir);
     installed.push(`Codex skill -> ${codexSkillDir}`);
   }
   if (!options.skipMcp) {
@@ -178,16 +209,33 @@ function ensureDir(path) {
   mkdirSync(path, { recursive: true });
 }
 
+function replacePath(target) {
+  try {
+    rmSync(target, { recursive: true, force: true });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code !== "ENOENT") {
+      throw error;
+    }
+  }
+}
+
+function deployDirectory(source, target) {
+  ensureDir(dirname(target));
+  replacePath(target);
+  cpSync(source, target, { recursive: true });
+}
+
+function deployServerBundle() {
+  ensureDir(installedServerDir);
+  cpSync(serverBundlePath, installedServerBundlePath);
+}
+
 function linkSkill(source, target) {
   ensureDir(dirname(target));
 
   try {
-    const stat = lstatSync(target);
-    if (stat.isSymbolicLink()) {
-      rmSync(target, { force: true });
-    } else {
-      throw new Error(`Refusing to replace non-symlink directory at ${target}`);
-    }
+    lstatSync(target);
+    replacePath(target);
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code !== "ENOENT") {
       throw error;
@@ -240,7 +288,7 @@ function installCodexMcp() {
     "# BEGIN figma-design-pipeline",
     '[mcp_servers."figma-design-pipeline"]',
     'command = "node"',
-    `args = [${JSON.stringify(resolve(distDir, "index.js"))}]`,
+    `args = [${JSON.stringify(installedServerBundlePath)}]`,
     'env = { FIGMA_ACCESS_TOKEN = "$FIGMA_ACCESS_TOKEN", FIGMA_FILE_KEY = "$FIGMA_FILE_KEY", COMPONENT_REGISTRY_DIR = "$COMPONENT_REGISTRY_DIR" }',
     "startup_timeout_ms = 30000",
     "# END figma-design-pipeline",
@@ -270,7 +318,7 @@ function escapeRegex(value) {
 function buildStdioServerConfig() {
   return {
     command: "node",
-    args: [serverBundlePath],
+    args: [installedServerBundlePath],
     env: {
       FIGMA_ACCESS_TOKEN: "$FIGMA_ACCESS_TOKEN",
       FIGMA_FILE_KEY: "$FIGMA_FILE_KEY",

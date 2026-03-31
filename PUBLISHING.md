@@ -51,7 +51,7 @@ git push origin figma-design-pipeline-v<next-version>
 npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
-This installs: MCP server registration, skill symlink, and Figma plugin to `~/.figma-design-pipeline/plugin/`.
+This installs stable local assets under `~/.figma-design-pipeline/`, registers the MCP server, creates the client skill symlink, and deploys the Figma plugin to `~/.figma-design-pipeline/plugin/`.
 
 ## Verification
 
@@ -65,5 +65,8 @@ Clean-home test:
 TMP_HOME="$(mktemp -d)"
 cd /tmp
 HOME="$TMP_HOME" npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+sed -n '1,120p' "$TMP_HOME/.codex/config.toml"
 ls "$TMP_HOME/.figma-design-pipeline/plugin/manifest.json"
 ```
+
+Confirm the generated Codex config points to `$TMP_HOME/.figma-design-pipeline/server/index.js` and not an `.npm/_npx/...` cache path.

@@ -25,6 +25,7 @@ Verify clean-home install:
 TMP_HOME="$(mktemp -d)"
 cd /tmp
 HOME="$TMP_HOME" npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+sed -n '1,120p' "$TMP_HOME/.codex/config.toml"
 ```
 
 Confirm the plugin was deployed:
@@ -32,16 +33,18 @@ Confirm the plugin was deployed:
 ls ~/.figma-design-pipeline/plugin/manifest.json
 ```
 
+Confirm the generated Codex config points to `$TMP_HOME/.figma-design-pipeline/server/index.js` and does not reference `.npm/_npx/...`.
+
 ## 2. Plugin Smoke Test
 
 1. Open Figma Desktop
 2. Plugins > Development > Import plugin from manifest
 3. Select `~/.figma-design-pipeline/plugin/manifest.json`
-4. Run the plugin — should show "Connected (port 4010)"
+4. Run the plugin — should show "Connected"
 
 From any CLI:
 ```
-figma_plugin_status → { connected: true, pluginVersion: "2.0.0" }
+figma_plugin_status → { connected: true, port: 4010 | 4011 | 4012 | ... }
 ```
 
 Test a batch operation:

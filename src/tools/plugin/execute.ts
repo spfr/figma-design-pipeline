@@ -77,6 +77,16 @@ function generateFallbackJs(actions: Action[]): string {
   }
 
   lines.push("const results = [];");
+  lines.push("const resolveRefId = (id) => {");
+  lines.push("  if (typeof id !== \"string\") return id;");
+  lines.push("  const match = id.match(/^\\$ref:node-(\\d+)$/);");
+  lines.push("  if (!match) return id;");
+  lines.push("  const index = Number(match[1]);");
+  lines.push("  const resolved = results[index]?.nodeId;");
+  lines.push("  if (!resolved) throw new Error(`Unable to resolve ${id}. Ensure referenced action ran first.`);");
+  lines.push("  return resolved;");
+  lines.push("};");
+  lines.push("const getNode = (id) => figma.getNodeById(resolveRefId(id));");
   lines.push("");
 
   for (let i = 0; i < actions.length; i++) {
@@ -85,7 +95,7 @@ function generateFallbackJs(actions: Action[]): string {
 
     const j = JSON.stringify;
     const nid = "nodeId" in a ? a.nodeId : "";
-    const g = (id: string) => `figma.getNodeById("${id}")`;
+    const g = (id: string) => `getNode(${j(id)})`;
     const r = (t: string, extra = "") => `results.push({ type: "${t}", nodeId: "${nid}"${extra} });`;
 
     switch (a.type) {
@@ -171,7 +181,7 @@ function generateFallbackJs(actions: Action[]): string {
         lines.push(`{ const c = figma.createComponentFromNode(${g(nid)}); c.name = ${j(a.name)}; results.push({ type: "create_component_from_node", nodeId: c.id }); }`);
         break;
       case "create_component_set":
-        lines.push(`{ const comps = ${j(a.componentIds)}.map(id => figma.getNodeById(id)); const set = figma.combineAsVariants(comps, comps[0].parent); set.name = ${j(a.name)}; results.push({ type: "create_component_set", nodeId: set.id }); }`);
+        lines.push(`{ const comps = ${j(a.componentIds)}.map(id => getNode(id)); const set = figma.combineAsVariants(comps, comps[0].parent); set.name = ${j(a.name)}; results.push({ type: "create_component_set", nodeId: set.id }); }`);
         break;
       case "create_instance":
         lines.push(`{ const inst = ${g(a.componentId)}.createInstance(); ${g(a.parentId)}.appendChild(inst); ${a.x !== undefined ? `inst.x = ${a.x};` : ""} ${a.y !== undefined ? `inst.y = ${a.y};` : ""} results.push({ type: "create_instance", nodeId: inst.id }); }`);
@@ -195,7 +205,7 @@ function generateFallbackJs(actions: Action[]): string {
         lines.push(`{ const s = figma.createEffectStyle(); s.name = ${j(a.name)}; s.effects = ${j(a.effects)}; results.push({ type: "create_effect_style", nodeId: s.id }); }`);
         break;
       case "apply_style":
-        lines.push(`{ const n = ${g(nid)}; n.${"property" in a && a.property === "fill" ? "fillStyleId" : a.property === "stroke" ? "strokeStyleId" : a.property === "text" ? "textStyleId" : "effectStyleId"} = "${a.styleId}"; ${r("apply_style")} }`);
+        lines.push(`{ const n = ${g(nid)}; n.${"property" in a && a.property === "fill" ? "fillStyleId" : a.property === "stroke" ? "strokeStyleId" : a.property === "text" ? "textStyleId" : "effectStyleId"} = resolveRefId(${j(a.styleId)}); ${r("apply_style")} }`);
         break;
       case "set_description":
         lines.push(`{ ${g(nid)}.description = ${j(a.description)}; ${r("set_description")} }`);
@@ -204,16 +214,16 @@ function generateFallbackJs(actions: Action[]): string {
         lines.push(`{ const p = figma.createPage(); p.name = ${j(a.name)}; results.push({ type: "create_page", nodeId: p.id }); }`);
         break;
       case "switch_page":
-        lines.push(`{ await figma.setCurrentPageAsync(figma.getNodeById("${a.pageId}")); results.push({ type: "switch_page" }); }`);
+        lines.push(`{ await figma.setCurrentPageAsync(getNode(${j(a.pageId)})); results.push({ type: "switch_page" }); }`);
         break;
       case "create_variable_collection":
         lines.push(`{ const c = figma.variables.createVariableCollection(${j(a.name)}); results.push({ type: "create_variable_collection", nodeId: c.id }); }`);
         break;
       case "create_variable":
-        lines.push(`{ const c = figma.variables.getVariableCollectionById("${a.collectionId}"); const v = figma.variables.createVariable(${j(a.name)}, c, "${a.resolvedType}"); results.push({ type: "create_variable", nodeId: v.id }); }`);
+        lines.push(`{ const c = figma.variables.getVariableCollectionById(resolveRefId(${j(a.collectionId)})); const v = figma.variables.createVariable(${j(a.name)}, c, "${a.resolvedType}"); results.push({ type: "create_variable", nodeId: v.id }); }`);
         break;
       case "bind_variable":
-        lines.push(`{ const v = figma.variables.getVariableById("${a.variableId}"); const n = ${g(nid)}; n.setBoundVariable("${a.property}", v); ${r("bind_variable")} }`);
+        lines.push(`{ const v = figma.variables.getVariableById(resolveRefId(${j(a.variableId)})); const n = ${g(nid)}; n.setBoundVariable("${a.property}", v); ${r("bind_variable")} }`);
         break;
       case "export_node":
         lines.push(`{ const bytes = await ${g(nid)}.exportAsync({ format: "${a.format || "PNG"}" }); results.push({ type: "export_node", base64: figma.base64Encode(bytes) }); }`);

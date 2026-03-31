@@ -23,7 +23,7 @@
         <article class="card">
           <h2>One-Line Install</h2>
           <pre><code>npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all</code></pre>
-          <p>Registers the MCP server and installs the design assistant skill for Claude Code, Gemini CLI, and Codex CLI.</p>
+          <p>Copies stable local assets into <code>~/.figma-design-pipeline/</code>, registers the MCP server, and installs the design assistant skill for Claude Code, Gemini CLI, and Codex CLI.</p>
         </article>
 
         <article class="card">
@@ -63,6 +63,7 @@
         <h2>Quick Start</h2>
         <ol>
           <li>Install: <code>npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all</code></li>
+          <li>Import <code>~/.figma-design-pipeline/plugin/manifest.json</code> into Figma Desktop</li>
           <li>Open Claude Code, Codex CLI, or Gemini CLI</li>
           <li>Start designing: "Create a design system for my project"</li>
         </ol>

@@ -62,7 +62,7 @@ The official Figma MCP handles Figma reads and file creation via OAuth — no pe
 npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
 ```
 
-This registers the MCP server and installs the design assistant skill for all supported clients.
+This copies the server bundle, skill, and plugin into `~/.figma-design-pipeline/`, registers the MCP server, and installs the design assistant skill for all supported clients.
 
 From source:
 
@@ -158,7 +158,7 @@ export COMPONENT_REGISTRY_DIR=/path/to/registry  # Component registry for codege
 | `figma_execute` | Batch-execute up to 500 validated actions via the Figma plugin (30-60x faster than `use_figma`). Falls back to generating `use_figma` JS when the plugin is not connected. |
 | `figma_plugin_status` | Check if the Figma plugin is connected. |
 
-**42 action types** including: create_frame, set_fills, set_gradient_fill, set_text_content, create_component, set_child_layout_sizing (responsive FILL/HUG/FIXED), set_constraints, create_variable_collection, create_variable, bind_variable, create_page, switch_page, and more. See `figma://actions` resource for the full schema.
+**43 action types** including: create_frame, set_fills, set_gradient_fill, set_text_content, create_component, set_child_layout_sizing (responsive FILL/HUG/FIXED), set_constraints, create_variable_collection, create_variable, bind_variable, create_page, switch_page, and more. See `figma://actions` resource for the full schema.
 
 ### Writing to Figma
 
@@ -169,10 +169,31 @@ Two paths:
 
 ### Installing the Figma Plugin
 
+If you used the one-line installer:
+
+1. In Figma Desktop: **Plugins > Development > Import plugin from manifest**
+2. Navigate to `~/.figma-design-pipeline/plugin/manifest.json`
+3. Run the plugin
+4. Confirm the bridge from your CLI with `figma_plugin_status`
+
+If you are running from source instead:
+
 1. Run `npm run build` (builds both server and plugin)
 2. In Figma Desktop: **Plugins > Development > Import plugin from manifest**
 3. Navigate to `plugin/dist/manifest.json` in this repo
-4. Run the plugin — it shows "Connected" when the MCP bridge is active
+4. Run the plugin and confirm with `figma_plugin_status`
+
+### Verifying Codex Installation
+
+After install, these should exist:
+
+```bash
+codex mcp get figma-design-pipeline
+ls ~/.codex/skills/figma-design-pipeline
+ls ~/.figma-design-pipeline/plugin/manifest.json
+```
+
+The Codex MCP entry should point to `~/.figma-design-pipeline/server/index.js`, not a temporary `~/.npm/_npx/...` path.
 
 ## Example Workflows
 
