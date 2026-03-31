@@ -1,6 +1,6 @@
 {
   "name": "@spicefactory/figma-design-pipeline",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "description": "AI design assistant MCP server: inspect Figma designs, plan changes, extract tokens, sync design systems, and generate code. Includes a high-performance Figma plugin for 30-60x faster writes than use_figma.",
   "keywords": [
     "figma",

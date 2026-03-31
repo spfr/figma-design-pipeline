@@ -2,6 +2,14 @@
 
 All notable changes to SPFR Figma Design Pipeline will be documented in this file.
 
+## [0.7.3] - 2026-03-31
+
+### Added
+- `set_effects` and `create_effect_style` now accept the full Figma effect payload (blendMode, offset, spread, showShadowOnly as well as drop/inner shadows and layer/background blurs) so plugin writes can reproduce Figma’s elite visual treatments.
+
+### Fixed
+- Drop-shadow batches no longer fail validation because the MCP schema now mirrors what the plugin expects to send.
+
 ## [0.5.0] - 2026-03-30
 
 ### Added

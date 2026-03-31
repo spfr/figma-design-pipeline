@@ -118,6 +118,12 @@ export FIGMA_FILE_KEY=...                        # Default Figma file
 export COMPONENT_REGISTRY_DIR=/path/to/registry  # Component registry for codegen
 ```
 
+## Release 0.7.3 (2026-03-31)
+
+- **Elevated effects coverage**: `set_effects` and `create_effect_style` now accept the full Figma shadow/blur payload (blendMode, spread, offset, showShadowOnly and both drop/inner shadows plus layer/background blurs), so plugin batches can reproduce the same elite visual treatments as hand-tuned Figma designs.
+- **Drop-shadow actions now validate** because the MCP schema matches Figma’s payload, making it safe to add glow-and-halo styling without schema errors.
+
+
 ## MCP Tools
 
 ### Inspect (read-only, via REST API)

@@ -261,7 +261,7 @@ Use with figma_execute({ actions: [...] }) for batch execution via the plugin br
 
 const server = new McpServer({
   name: "figma-design-pipeline",
-  version: "0.7.2",
+  version: "0.7.3",
 });
 
 // ─── MCP Resources ──────────────────────────────────────────────────

@@ -260,32 +260,67 @@ export const setStrokesActionSchema = z
   })
   .strict();
 
+const effectColorSchema = z
+  .object({
+    r: z.number().min(0).max(1),
+    g: z.number().min(0).max(1),
+    b: z.number().min(0).max(1),
+    a: z.number().min(0).max(1).default(1),
+  })
+  .describe("RGBA color for shadow effects");
+
+const effectOffsetSchema = z
+  .object({
+    x: z.number().default(0),
+    y: z.number().default(0),
+  })
+  .describe("Offset for shadow effects");
+
+const effectBlendModeSchema = z.enum([
+  "NORMAL",
+  "MULTIPLY",
+  "SCREEN",
+  "OVERLAY",
+  "DARKEN",
+  "LIGHTEN",
+  "COLOR_DODGE",
+  "COLOR_BURN",
+  "HARD_LIGHT",
+  "SOFT_LIGHT",
+  "DIFFERENCE",
+  "EXCLUSION",
+  "HUE",
+  "SATURATION",
+  "COLOR",
+  "LUMINOSITY",
+]);
+
+const shadowEffectSchema = z
+  .object({
+    type: z.enum(["DROP_SHADOW", "INNER_SHADOW"]),
+    visible: z.boolean().default(true),
+    radius: z.number().min(0).default(0),
+    blendMode: effectBlendModeSchema.default("NORMAL"),
+    color: effectColorSchema.optional(),
+    offset: effectOffsetSchema.optional(),
+    spread: z.number().optional(),
+    showShadowOnly: z.boolean().optional(),
+  })
+  .describe("Shadow effects with optional spread and offset");
+
+const blurEffectSchema = z
+  .object({
+    type: z.enum(["LAYER_BLUR", "BACKGROUND_BLUR"]),
+    visible: z.boolean().default(true),
+    radius: z.number().min(0).default(0),
+  })
+  .describe("Blur effects");
+
 export const setEffectsActionSchema = z
   .object({
     type: z.literal("set_effects"),
     nodeId: z.string(),
-    effects: z.array(
-      z.object({
-        type: z.enum(["DROP_SHADOW", "INNER_SHADOW", "LAYER_BLUR", "BACKGROUND_BLUR"]),
-        visible: z.boolean().default(true),
-        radius: z.number().min(0).default(0),
-        color: z
-          .object({
-            r: z.number().min(0).max(1),
-            g: z.number().min(0).max(1),
-            b: z.number().min(0).max(1),
-            a: z.number().min(0).max(1).default(1),
-          })
-          .optional(),
-        offset: z
-          .object({
-            x: z.number().default(0),
-            y: z.number().default(0),
-          })
-          .optional(),
-        spread: z.number().optional(),
-      })
-    ),
+    effects: z.array(z.union([shadowEffectSchema, blurEffectSchema])),
   })
   .strict();
 
@@ -355,28 +390,7 @@ export const createEffectStyleActionSchema = z
   .object({
     type: z.literal("create_effect_style"),
     name: z.string().min(1).describe("Style name (use '/' for folders)"),
-    effects: z.array(
-      z.object({
-        type: z.enum(["DROP_SHADOW", "INNER_SHADOW", "LAYER_BLUR", "BACKGROUND_BLUR"]),
-        visible: z.boolean().default(true),
-        radius: z.number().min(0).default(0),
-        color: z
-          .object({
-            r: z.number().min(0).max(1),
-            g: z.number().min(0).max(1),
-            b: z.number().min(0).max(1),
-            a: z.number().min(0).max(1).default(1),
-          })
-          .optional(),
-        offset: z
-          .object({
-            x: z.number().default(0),
-            y: z.number().default(0),
-          })
-          .optional(),
-        spread: z.number().optional(),
-      })
-    ),
+    effects: z.array(z.union([shadowEffectSchema, blurEffectSchema])),
   })
   .strict();
 
@@ -597,4 +611,3 @@ export const actionSchema = z.discriminatedUnion("type", [
 
 export type Action = z.infer<typeof actionSchema>;
 export type ActionType = Action["type"];
-
