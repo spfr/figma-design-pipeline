@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -18,6 +18,8 @@ const codexSkillDir = resolve(os.homedir(), ".codex", "skills", "figma-design-pi
 const agentsSkillDir = resolve(os.homedir(), ".agents", "skills", "figma-design-pipeline");
 const geminiSkillDir = resolve(os.homedir(), ".gemini", "skills", "figma-design-pipeline");
 const claudeSkillDir = resolve(os.homedir(), ".claude", "skills", "figma-design-pipeline");
+const pluginSourceDir = resolve(packageDir, "plugin", "dist");
+const pluginInstallDir = resolve(os.homedir(), ".figma-design-pipeline", "plugin");
 
 const args = process.argv.slice(2);
 const options = {
@@ -91,6 +93,14 @@ if (matches(options.client, "codex", "codex-cli")) {
   }
 }
 
+// Deploy the Figma plugin (for all clients — the plugin is client-agnostic)
+if (existsSync(pluginSourceDir)) {
+  ensureDir(dirname(pluginInstallDir));
+  rmSync(pluginInstallDir, { recursive: true, force: true });
+  cpSync(pluginSourceDir, pluginInstallDir, { recursive: true });
+  installed.push(`Figma plugin -> ${pluginInstallDir}`);
+}
+
 console.log("");
 console.log("Installed:");
 for (const line of installed) {
@@ -98,9 +108,11 @@ for (const line of installed) {
 }
 console.log("");
 console.log("Next steps:");
-console.log("- All major CLIs (Claude Code, Codex, Gemini) support the official Figma MCP via OAuth.");
-console.log("- FIGMA_ACCESS_TOKEN is only needed for this server's REST API analysis tools.");
-console.log("- Use the official Figma MCP for full read/write Figma access — no token needed.");
+console.log("- For 30-60x faster writes: open Figma Desktop > Plugins > Development >");
+console.log(`  Import plugin from manifest > ${join(pluginInstallDir, "manifest.json")}`);
+console.log("- Then run the plugin — it connects automatically to the MCP bridge.");
+console.log("- FIGMA_ACCESS_TOKEN is only needed for REST API analysis tools.");
+console.log("- The official Figma MCP handles OAuth-based read/write for all major CLIs.");
 
 function printHelp() {
   console.log(`Usage: spfr-figma-design-pipeline-install [options]

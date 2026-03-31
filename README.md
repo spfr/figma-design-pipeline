@@ -151,9 +151,28 @@ export COMPONENT_REGISTRY_DIR=/path/to/registry  # Component registry for codege
 | `figma_generate_schema` | Generate CMS schema from Figma structure. |
 | `figma_export_tokens` | Export tokens as Tailwind config, CSS variables, or JSON. |
 
+### Plugin (high-performance batch writes)
+
+| Tool | Description |
+|------|-------------|
+| `figma_execute` | Batch-execute up to 500 validated actions via the Figma plugin (30-60x faster than `use_figma`). Falls back to generating `use_figma` JS when the plugin is not connected. |
+| `figma_plugin_status` | Check if the Figma plugin is connected. |
+
+**42 action types** including: create_frame, set_fills, set_gradient_fill, set_text_content, create_component, set_child_layout_sizing (responsive FILL/HUG/FIXED), set_constraints, create_variable_collection, create_variable, bind_variable, create_page, switch_page, and more. See `figma://actions` resource for the full schema.
+
 ### Writing to Figma
 
-All writes use the official Figma MCP's `use_figma` tool, which executes Figma Plugin API JavaScript directly. The plan tools generate action descriptions that the AI agent translates into `use_figma` calls.
+Two paths:
+
+1. **Plugin connected** (recommended): `figma_execute` sends batched actions to the Figma plugin via WebSocket. 50 operations in ~200ms vs ~50 seconds with individual `use_figma` calls.
+2. **Plugin not connected**: Use the official Figma MCP's `use_figma` directly, or call `figma_execute` which returns fallback JavaScript.
+
+### Installing the Figma Plugin
+
+1. Run `npm run build` (builds both server and plugin)
+2. In Figma Desktop: **Plugins > Development > Import plugin from manifest**
+3. Navigate to `plugin/dist/manifest.json` in this repo
+4. Run the plugin — it shows "Connected" when the MCP bridge is active
 
 ## Example Workflows
 
@@ -163,7 +182,7 @@ All writes use the official Figma MCP's `use_figma` tool, which executes Figma P
 1. Browse the website using browser tools
 2. Extract colors, fonts, spacing, component patterns
 3. create_new_file → new Figma file
-4. use_figma → create color styles, text styles, components
+4. figma_execute → batch-create color styles, text styles, components
 5. figma_audit → verify the result
 ```
 
