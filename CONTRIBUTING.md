@@ -39,7 +39,7 @@ timeout 2 node dist/index.js
 This repo covers:
 
 - MCP server with 18 tools (inspect, plan, codegen, plugin bridge)
-- Figma plugin (42 action types, WebSocket bridge, batch execution)
+- Figma plugin (43 action types, WebSocket bridge, batch execution)
 - Design assistant skill (SKILL.md)
 - Installers for Claude Code, Codex CLI, Gemini CLI
 - Token export (Tailwind, CSS, JSON, Style Dictionary)

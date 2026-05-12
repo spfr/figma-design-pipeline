@@ -32,7 +32,7 @@ AI Agent (Claude Code / Codex / Gemini)
     │   ├─ Codegen tools: map-components, generate-page, export-tokens
     │   └─ Plugin bridge (WebSocket, port 4010-4014)
     │         ↕ WebSocket
-    │       Figma Plugin (batch executor, 42 action types)
+    │       Figma Plugin (batch executor, 43 action types)
     │
     └─ Browser Tools ───────→ Website capture & analysis
 ```

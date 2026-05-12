@@ -414,7 +414,7 @@ async function executeAction(action: Record<string, unknown>): Promise<{
     case "create_paint_style": {
       const style = figma.createPaintStyle();
       style.name = action.name as string;
-      style.paints = action.paints as Paint[];
+      style.paints = sanitizePaints((action.paints as unknown[]) || []);
       return { after: { id: style.id, name: style.name }, newNodeId: style.id };
     }
 
@@ -577,14 +577,16 @@ async function executeAction(action: Record<string, unknown>): Promise<{
       const node = await findSceneNode(action.nodeId as string);
       const property = action.property as string;
       const styleId = resolveId(action.styleId as string);
-      if (property === "fill" && "fillStyleId" in node) {
-        (node as GeometryMixin).fillStyleId = styleId;
-      } else if (property === "stroke" && "strokeStyleId" in node) {
-        (node as GeometryMixin).strokeStyleId = styleId;
-      } else if (property === "text" && "textStyleId" in node) {
-        (node as TextNode).textStyleId = styleId;
-      } else if (property === "effect" && "effectStyleId" in node) {
-        (node as BlendMixin).effectStyleId = styleId;
+      // Figma's dynamic-page document access disallows the sync setters
+      // (`node.fillStyleId = x`); the async variants are required.
+      if (property === "fill" && "setFillStyleIdAsync" in node) {
+        await (node as unknown as { setFillStyleIdAsync: (id: string) => Promise<void> }).setFillStyleIdAsync(styleId);
+      } else if (property === "stroke" && "setStrokeStyleIdAsync" in node) {
+        await (node as unknown as { setStrokeStyleIdAsync: (id: string) => Promise<void> }).setStrokeStyleIdAsync(styleId);
+      } else if (property === "text" && node.type === "TEXT" && "setTextStyleIdAsync" in node) {
+        await (node as unknown as { setTextStyleIdAsync: (id: string) => Promise<void> }).setTextStyleIdAsync(styleId);
+      } else if (property === "effect" && "setEffectStyleIdAsync" in node) {
+        await (node as unknown as { setEffectStyleIdAsync: (id: string) => Promise<void> }).setEffectStyleIdAsync(styleId);
       } else {
         throw new Error(`Cannot apply ${property} style to node type ${node.type}`);
       }

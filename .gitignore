@@ -24,3 +24,8 @@ registry/
 .DS_Store
 .playwright-mcp/
 .claude/worktrees/
+
+# Local one-off scripts (not part of the package)
+case-study-build.js
+scratch/
+.scratch/

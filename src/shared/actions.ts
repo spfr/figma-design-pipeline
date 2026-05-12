@@ -43,7 +43,7 @@ export const createTextActionSchema = z
         r: z.number().min(0).max(1),
         g: z.number().min(0).max(1),
         b: z.number().min(0).max(1),
-        a: z.number().min(0).max(1).default(1),
+        a: z.number().min(0).max(1).optional(),
       }).optional(),
       opacity: z.number().min(0).max(1).optional(),
     })).optional(),
@@ -154,7 +154,7 @@ export const setFillsActionSchema = z
             r: z.number().min(0).max(1),
             g: z.number().min(0).max(1),
             b: z.number().min(0).max(1),
-            a: z.number().min(0).max(1).default(1),
+            a: z.number().min(0).max(1).optional(),
           })
           .optional(),
         opacity: z.number().min(0).max(1).optional(),
@@ -251,7 +251,7 @@ export const setStrokesActionSchema = z
           r: z.number().min(0).max(1),
           g: z.number().min(0).max(1),
           b: z.number().min(0).max(1),
-          a: z.number().min(0).max(1).default(1),
+          a: z.number().min(0).max(1).optional(),
         }),
         opacity: z.number().min(0).max(1).optional(),
       })
@@ -367,8 +367,9 @@ export const createPaintStyleActionSchema = z
           r: z.number().min(0).max(1),
           g: z.number().min(0).max(1),
           b: z.number().min(0).max(1),
-          a: z.number().min(0).max(1).default(1),
+          a: z.number().min(0).max(1).optional(),
         }),
+        opacity: z.number().min(0).max(1).optional(),
       })
     ),
   })

@@ -64,6 +64,8 @@ npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install
 
 This copies the server bundle, skill, and plugin into `~/.figma-design-pipeline/`, registers the MCP server, and installs the design assistant skill for all supported clients.
 
+To update later, re-run the same command — it refreshes the bundle, skill, and plugin in place.
+
 From source:
 
 ```bash
@@ -118,11 +120,13 @@ export FIGMA_FILE_KEY=...                        # Default Figma file
 export COMPONENT_REGISTRY_DIR=/path/to/registry  # Component registry for codegen
 ```
 
-## Release 0.7.3 (2026-03-31)
+## What's New (0.7.5)
 
-- **Elevated effects coverage**: `set_effects` and `create_effect_style` now accept the full Figma shadow/blur payload (blendMode, spread, offset, showShadowOnly and both drop/inner shadows plus layer/background blurs), so plugin batches can reproduce the same elite visual treatments as hand-tuned Figma designs.
-- **Drop-shadow actions now validate** because the MCP schema matches Figma’s payload, making it safe to add glow-and-halo styling without schema errors.
+- **`apply_style` works under `documentAccess: dynamic-page`**: switched to Figma's async setters (`setFillStyleIdAsync`, `setStrokeStyleIdAsync`, `setTextStyleIdAsync`, `setEffectStyleIdAsync`). Style binding no longer fails silently.
+- **`create_paint_style` accepts RGBA**: paints are sanitized so the alpha channel is folded into `opacity` and the color is reduced to the `{r,g,b}` triplet Figma expects.
+- **Cleaner on-the-wire actions**: paint-color schemas no longer inject `a: 1` defaults, so omitting alpha stays omitted. Gradient stops and shadow colors still default `a: 1` (Figma needs RGBA there).
 
+See [CHANGELOG.md](CHANGELOG.md) for the full history.
 
 ## MCP Tools
 
