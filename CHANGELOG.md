@@ -2,6 +2,24 @@
 
 All notable changes to SPFR Figma Design Pipeline will be documented in this file.
 
+## [0.8.0] - 2026-05-12
+
+### Changed (breaking)
+- **Node 24 LTS required.** `engines.node` is now `">=24.0.0"`. The server bundle's esbuild target moved from `node22` to `node24`. Older Node versions will get an npm install warning and may run, but are no longer supported.
+
+### Changed
+- **Zod 4.4** — internal schema validation migrated from zod 3.25 to zod 4. No tool/MCP surface change. Updated the one v3-only signature in `src/shared/actions.ts` (`z.record(z.union(...))` → `z.record(z.string(), z.union(...))`).
+- **TypeScript 6.0** — dev toolchain bumped. `tsc --noEmit` clean.
+- **esbuild 0.28**, **@types/node 24.12** — toolchain bumps.
+
+### Added
+- `INSTALL.md` and `USAGE.md` — full installation and usage guides separated from README.
+- Schema-level vitest cases for the migrated `z.record` field, so a future zod-API regression fails CI.
+
+### Notes
+- Server bundle (`dist/index.js`) grew from ~1.0 MB to ~1.4 MB. The MCP SDK 1.29 explicitly bundles `zod/v3` alongside `zod/v4` for back-compat with v3 consumers; both are now included. No effect on tool latency or memory (local subprocess).
+- All other deps stay where 0.7.5 left them: `@modelcontextprotocol/sdk ^1.29.0`, `dotenv ^17.4.2`, `ws ^8.20.0`, `@figma/plugin-typings ^1.125.0`, `tsx ^4.21.0`, `vitest ^4.1.6`.
+
 ## [0.7.5] - 2026-05-11
 
 ### Fixed

@@ -1,6 +1,6 @@
 {
   "name": "@spicefactory/figma-design-pipeline",
-  "version": "0.7.5",
+  "version": "0.8.0",
   "description": "AI design assistant MCP server: inspect Figma designs, plan changes, extract tokens, sync design systems, and generate code. Includes a high-performance Figma plugin for 30-60x faster writes than use_figma.",
   "keywords": [
     "figma",
@@ -31,6 +31,9 @@
     "ajv": "^8.18.0"
   },
   "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
   "directories": {
     "bin": "bin"
   },
@@ -42,8 +45,11 @@
     "scripts/build-plugin.mjs",
     "scripts/install.mjs",
     "skill",
+    "CHANGELOG.md",
+    "INSTALL.md",
     "PUBLISHING.md",
-    "README.md"
+    "README.md",
+    "USAGE.md"
   ],
   "scripts": {
     "dev": "tsx src/index.ts",
@@ -60,15 +66,15 @@
     "@modelcontextprotocol/sdk": "^1.29.0",
     "dotenv": "^17.4.2",
     "ws": "^8.20.0",
-    "zod": "^3.25.76"
+    "zod": "^4.0.0"
   },
   "devDependencies": {
     "@figma/plugin-typings": "^1.125.0",
-    "@types/node": "^22.19.19",
+    "@types/node": "^24.12.4",
     "@types/ws": "^8.18.1",
-    "esbuild": "^0.25.12",
+    "esbuild": "^0.28.0",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vitest": "^4.1.6"
   }
 }

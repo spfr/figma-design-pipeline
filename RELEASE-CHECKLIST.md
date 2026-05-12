@@ -2,14 +2,17 @@
 
 Use this checklist for every public release of SPFR Figma Design Pipeline.
 
+Confirm you are on **Node 24 LTS or newer** (`node --version`).
+
 ## 1. Local Verification
 
 ```bash
+node --version       # must be >= 24.0.0
 npm ci
-npm run check
-npm test
-npm run build       # builds server + plugin
-npm pack
+npm run check        # tsc --noEmit (TS 6)
+npm test             # vitest (4 tests)
+npm run build        # builds server + plugin
+npm pack             # produces spicefactory-figma-design-pipeline-<version>.tgz
 ```
 
 Verify installer from outside the repo:

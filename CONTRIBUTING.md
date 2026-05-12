@@ -2,15 +2,21 @@
 
 Thanks for contributing to SPFR Figma Design Pipeline.
 
+## Prerequisites
+
+- **Node 24 LTS or newer.** `engines.node: ">=24.0.0"`.
+- We use TypeScript 6, zod 4, esbuild 0.28.
+
 ## Development
 
 ```bash
 npm install
-npm run check          # TypeScript type checking
-npm test               # Run tests
+npm run check          # TypeScript type checking (tsc --noEmit)
+npm test               # Run tests (vitest)
 npm run build          # Build server + plugin
-npm run build:server   # Server only
-npm run build:plugin   # Plugin only
+npm run build:server   # Server only -> dist/index.js
+npm run build:plugin   # Plugin only -> plugin/dist/
+npm run dev            # Run the MCP server with tsx
 ```
 
 ## Testing

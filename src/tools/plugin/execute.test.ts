@@ -1,5 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { handleExecute } from "./execute.js";
+import { actionSchema } from "../../shared/actions.js";
+
+describe("actionSchema (zod v4)", () => {
+  it("parses set_component_properties with the two-arg z.record signature", () => {
+    const result = actionSchema.safeParse({
+      type: "set_component_properties",
+      nodeId: "1:2",
+      properties: { Variant: "Primary", Disabled: false },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects set_component_properties with non-string/boolean values", () => {
+    const result = actionSchema.safeParse({
+      type: "set_component_properties",
+      nodeId: "1:2",
+      properties: { Variant: 42 },
+    });
+    expect(result.success).toBe(false);
+  });
+});
 
 describe("handleExecute fallback generation", () => {
   it("resolves batch references in fallback JS when the plugin bridge is disconnected", async () => {

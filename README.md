@@ -2,45 +2,33 @@
 
 AI design assistant for Figma. Analyze websites, create design systems, design pages and dashboards, sync tokens, and generate production code — all from your terminal.
 
-Works with **Claude Code**, **Codex CLI**, and **Gemini CLI**. Uses the official Figma MCP for full read/write Figma access.
+Works with **Claude Code**, **Codex CLI**, and **Gemini CLI**. Uses the official Figma MCP for full read/write Figma access, plus a high-performance plugin for 30-60x faster writes.
 
-## What It Does
+## What you can do
 
 ```
 "Look at stripe.com and create a design system based on their style"
-
-→ Captures the website, extracts colors, typography, spacing
-→ Creates a new Figma file with organized design system
-→ Builds color palette, type scale, spacing system, components
-→ Everything appears in Figma — ready for your team
-```
-
-```
 "Design me an analytics dashboard with sidebar nav, metrics cards, and charts"
-
-→ Creates the page layout in Figma with proper auto-layout
-→ Uses your existing design system components
-→ Applies consistent spacing, colors, and typography
-→ Produces a polished, designer-quality result
-```
-
-```
 "Sync the design tokens from Figma to our Tailwind config"
-
-→ Reads current Figma styles and variables
-→ Compares against your code tokens
-→ Exports as Tailwind config, CSS variables, or JSON
-```
-
-```
 "Generate React components from this Figma page"
-
-→ Maps Figma nodes to your codebase components
-→ Generates page templates and CMS schemas
-→ Exports design tokens in your framework's format
+"Audit https://figma.com/design/ABC/My-File for naming and accessibility issues"
 ```
 
-## How It Works
+## Quick start
+
+```bash
+npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
+```
+
+Then in Figma Desktop: **Plugins → Development → Import plugin from manifest →** `~/.figma-design-pipeline/plugin/manifest.json`.
+
+Open Claude Code, Codex CLI, or Gemini CLI and start typing. The design assistant skill takes care of routing.
+
+For prerequisites, per-CLI verification, manual config, and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
+
+For tool reference and end-to-end workflows, see **[USAGE.md](USAGE.md)**.
+
+## How it works
 
 ```
 AI Agent (Claude Code / Codex / Gemini)
@@ -48,265 +36,60 @@ AI Agent (Claude Code / Codex / Gemini)
     ├─ Official Figma MCP ──→ Read & write Figma (OAuth, zero setup)
     │
     ├─ This MCP Server ─────→ Design intelligence (analysis, planning, codegen)
+    │       ↕ WebSocket (ports 4010-4014)
+    │   Figma plugin ─────→ Batch executor (43 action types, 30-60x faster)
     │
-    └─ Browser Tools ───────→ Website capture & analysis
+    └─ Browser tools ───────→ Website capture & analysis
 ```
 
-The official Figma MCP handles Figma reads and file creation via OAuth — no personal access token needed. This MCP server provides design intelligence (inspection, auditing, planning, token sync, code generation) plus a high-performance plugin bridge for writes (`figma_execute` — 30-60x faster than `use_figma`).
+The official Figma MCP handles Figma reads and file creation via OAuth — no personal access token needed. This MCP server adds design intelligence (inspection, auditing, planning, token sync, code generation) plus the plugin bridge for batched writes.
 
-## Quick Start
+## What's new
 
-### 1. Install (one command)
+**0.8.0** (2026-05-12)
+- **Node 24 LTS required.** Target raised from Node 22 to Node 24 (active LTS as of Oct 2025). `engines.node: ">=24.0.0"` is now declared.
+- **Zod 4** — internal schema validation migrated from zod 3 to zod 4.4. No public API change; one internal `z.record(...)` signature updated for the new two-arg form.
+- **TypeScript 6** — dev toolchain bumped to TS 6.0. `tsc --noEmit` clean.
+- **esbuild 0.28**, **@types/node 24** — toolchain bumps.
+- Bundle: server `dist/index.js` ~1.4 MB (up from ~1.0 MB). The MCP SDK explicitly imports `zod/v3` for back-compat, so both zod majors bundle. Has no effect on tool latency or memory in practice — the server is a local subprocess.
 
-```bash
-npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
-```
-
-This copies the server bundle, skill, and plugin into `~/.figma-design-pipeline/`, registers the MCP server, and installs the design assistant skill for all supported clients.
-
-To update later, re-run the same command — it refreshes the bundle, skill, and plugin in place.
-
-From source:
-
-```bash
-git clone https://github.com/spfr/figma-design-pipeline.git
-cd figma-design-pipeline
-npm install
-npm run install:clients
-```
-
-### 2. Try it
-
-Open Claude Code (or Codex/Gemini CLI) and type:
-
-```
-Create a new Figma file called "My Design System" with a color palette
-using blue as the primary color and a 4px spacing scale
-```
-
-The AI will use the official Figma MCP to create the file and build the design system. No token needed for creating and writing to Figma.
-
-More things to try:
-
-```
-Look at https://stripe.com and extract their design language into a new Figma file
-```
-
-```
-Audit the Figma file at https://figma.com/design/ABC123/My-File?node-id=1:2
-for naming issues and accessibility problems
-```
-
-```
-Export the design tokens from this Figma file as a Tailwind config
-```
-
-### 3. Optional: REST API tools
-
-All major CLIs support the official Figma MCP via OAuth — **no token needed** for Figma reads and writes.
-
-If you also want to use this server's REST API analysis tools (structured tree inspection, token extraction, auditing), set:
-
-```bash
-export FIGMA_ACCESS_TOKEN=figd_your_token_here
-```
-
-Get a token from [Figma Settings > Personal access tokens](https://www.figma.com/developers/api#access-tokens).
-
-Other optional env vars:
-
-```bash
-export FIGMA_FILE_KEY=...                        # Default Figma file
-export COMPONENT_REGISTRY_DIR=/path/to/registry  # Component registry for codegen
-```
-
-## What's New (0.7.5)
-
-- **`apply_style` works under `documentAccess: dynamic-page`**: switched to Figma's async setters (`setFillStyleIdAsync`, `setStrokeStyleIdAsync`, `setTextStyleIdAsync`, `setEffectStyleIdAsync`). Style binding no longer fails silently.
-- **`create_paint_style` accepts RGBA**: paints are sanitized so the alpha channel is folded into `opacity` and the color is reduced to the `{r,g,b}` triplet Figma expects.
-- **Cleaner on-the-wire actions**: paint-color schemas no longer inject `a: 1` defaults, so omitting alpha stays omitted. Gradient stops and shadow colors still default `a: 1` (Figma needs RGBA there).
-
-See [CHANGELOG.md](CHANGELOG.md) for the full history.
+See [CHANGELOG.md](CHANGELOG.md) for prior releases.
 
 ## MCP Tools
 
-### Inspect (read-only, via REST API)
+### Inspect (read-only)
+`figma_get_tree`, `figma_audit`, `figma_extract_tokens`, `figma_find_nodes`, `figma_get_components`, `figma_get_styles`, `figma_diff_tokens`, `figma_export_images`
 
-| Tool | Description |
-|------|-------------|
-| `figma_get_tree` | Fetch enriched node tree with classifications, layout info. Auto-truncates at 80KB. |
-| `figma_audit` | Structural audit: naming, layout, components, tokens, accessibility. |
-| `figma_extract_tokens` | Extract design tokens (colors, fonts, spacing, radius, shadows) with Tailwind mapping. |
-| `figma_export_images` | Export node renders as images via REST API. |
-| `figma_find_nodes` | Search/filter nodes by name, type, classification, text, or size. |
-| `figma_get_components` | List all components with names, descriptions, and node IDs. |
-| `figma_get_styles` | List all published styles in a file. |
-| `figma_diff_tokens` | Compare Figma styles vs code tokens. Reports drift. |
-
-### Plan (analysis, no mutations)
-
-| Tool | Description |
-|------|-------------|
-| `figma_plan_naming` | Generate semantic rename plan for generic-named nodes. |
-| `figma_plan_grouping` | Plan semantic frame grouping for scattered elements. |
-| `figma_plan_layout` | Plan auto-layout conversion from absolute positioning. |
-| `figma_plan_components` | Plan component extraction from repeated visual patterns. |
+### Plan (analysis, returns action batches)
+`figma_plan_naming`, `figma_plan_grouping`, `figma_plan_layout`, `figma_plan_components`
 
 ### Codegen
+`figma_map_components`, `figma_generate_page`, `figma_generate_schema`, `figma_export_tokens`
 
-| Tool | Description |
-|------|-------------|
-| `figma_map_components` | Map Figma nodes to codebase components via signature matching. |
-| `figma_generate_page` | Generate page template from Figma design. |
-| `figma_generate_schema` | Generate CMS schema from Figma structure. |
-| `figma_export_tokens` | Export tokens as Tailwind config, CSS variables, or JSON. |
+### Write (high-performance batch execution)
+`figma_execute`, `figma_plugin_status`
 
-### Plugin (high-performance batch writes)
+43 action types — frames, text, components, instances, paints, strokes, gradients, effects, auto-layout, constraints, variables, pages. See `figma://actions` MCP resource or [USAGE.md](USAGE.md) for the catalog.
 
-| Tool | Description |
-|------|-------------|
-| `figma_execute` | Batch-execute up to 500 validated actions via the Figma plugin (30-60x faster than `use_figma`). Falls back to generating `use_figma` JS when the plugin is not connected. |
-| `figma_plugin_status` | Check if the Figma plugin is connected. |
+## Documentation
 
-**43 action types** including: create_frame, set_fills, set_gradient_fill, set_text_content, create_component, set_child_layout_sizing (responsive FILL/HUG/FIXED), set_constraints, create_variable_collection, create_variable, bind_variable, create_page, switch_page, and more. See `figma://actions` resource for the full schema.
-
-### Writing to Figma
-
-Two paths:
-
-1. **Plugin connected** (recommended): `figma_execute` sends batched actions to the Figma plugin via WebSocket. 50 operations in ~200ms vs ~50 seconds with individual `use_figma` calls.
-2. **Plugin not connected**: Call `figma_execute` anyway — it returns fallback JavaScript you can pass to `use_figma`.
-
-### Installing the Figma Plugin
-
-If you used the one-line installer:
-
-1. In Figma Desktop: **Plugins > Development > Import plugin from manifest**
-2. Navigate to `~/.figma-design-pipeline/plugin/manifest.json`
-3. Run the plugin
-4. Confirm the bridge from your CLI with `figma_plugin_status`
-
-If you are running from source instead:
-
-1. Run `npm run build` (builds both server and plugin)
-2. In Figma Desktop: **Plugins > Development > Import plugin from manifest**
-3. Navigate to `plugin/dist/manifest.json` in this repo
-4. Run the plugin and confirm with `figma_plugin_status`
-
-### Verifying Codex Installation
-
-After install, these should exist:
-
-```bash
-codex mcp get figma-design-pipeline
-ls ~/.codex/skills/figma-design-pipeline
-ls ~/.figma-design-pipeline/plugin/manifest.json
-```
-
-The Codex MCP entry should point to `~/.figma-design-pipeline/server/index.js`, not a temporary `~/.npm/_npx/...` path.
-
-## Example Workflows
-
-### Create a Design System from a Website
-
-```
-1. Browse the website using browser tools
-2. Extract colors, fonts, spacing, component patterns
-3. create_new_file → new Figma file
-4. figma_execute → batch-create color styles, text styles, components
-5. figma_audit → verify the result
-```
-
-### Sync Design Tokens
-
-```
-1. figma_get_styles → read current Figma styles
-2. figma_diff_tokens → compare against code tokens
-3. figma_export_tokens → export as Tailwind/CSS/JSON
-```
-
-### Clean Up a Design File
-
-```
-1. figma_audit → find naming issues, layout problems
-2. figma_plan_naming → generate rename plan
-3. figma_plan_layout → plan auto-layout conversion
-4. figma_execute → execute the plans (or use_figma with fallback JS)
-5. figma_audit → verify improvements
-```
-
-### Generate Code from Figma
-
-```
-1. figma_get_tree → understand the design structure
-2. figma_map_components → match to codebase components
-3. figma_generate_page → generate page template
-4. figma_export_tokens → export tokens in your format
-```
-
-## Component Registry
-
-The codegen tools use a component registry to map Figma nodes to your codebase. Set `COMPONENT_REGISTRY_DIR` to your project's registry directory.
-
-## Manual Config
-
-If you prefer manual setup, use the standalone bundle at `dist/index.js`:
-
-### Claude Code
-
-```json
-{
-  "mcpServers": {
-    "figma-design-pipeline": {
-      "command": "node",
-      "args": ["/path/to/dist/index.js"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "$FIGMA_ACCESS_TOKEN"
-      }
-    }
-  }
-}
-```
-
-### Gemini CLI
-
-```json
-{
-  "mcpServers": {
-    "figma-design-pipeline": {
-      "command": "node",
-      "args": ["/path/to/dist/index.js"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "$FIGMA_ACCESS_TOKEN"
-      }
-    }
-  }
-}
-```
-
-### Codex CLI
-
-```toml
-[mcp_servers."figma-design-pipeline"]
-command = "node"
-args = ["/path/to/dist/index.js"]
-env = { FIGMA_ACCESS_TOKEN = "$FIGMA_ACCESS_TOKEN" }
-startup_timeout_ms = 30000
-```
+- **[INSTALL.md](INSTALL.md)** — Prerequisites, install steps for Claude/Codex/Gemini, plugin setup, troubleshooting, uninstall.
+- **[USAGE.md](USAGE.md)** — Tool reference, common workflows, tips.
+- **[CHANGELOG.md](CHANGELOG.md)** — Version history.
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Development setup, scope, PR checklist.
+- **[PUBLISHING.md](PUBLISHING.md)** — Release process.
+- **[SECURITY.md](SECURITY.md)** — Credential handling, supported versions.
 
 ## Development
 
 ```bash
-npm run dev          # Start MCP server in dev mode
-npm run build        # Build server bundle
-npm run check        # TypeScript type checking
-npm test             # Run tests
-npm run test:watch   # Watch mode
+npm install
+npm run dev          # tsx src/index.ts
+npm run build        # build server + plugin
+npm run check        # tsc --noEmit
+npm test             # vitest run
+npm run test:watch
 ```
-
-## Publishing
-
-See [PUBLISHING.md](PUBLISHING.md) for the release process.
 
 ## License
 

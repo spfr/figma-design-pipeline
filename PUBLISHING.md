@@ -2,6 +2,8 @@
 
 This package is published on **npmjs.com** as `@spicefactory/figma-design-pipeline`.
 
+Releases are made by the GitHub Actions trusted-publisher workflow (`.github/workflows/publish-npm.yml`), triggered by tag push.
+
 ## What Ships
 
 - `dist/index.js` — standalone MCP server bundle (includes WebSocket bridge)
@@ -9,13 +11,20 @@ This package is published on **npmjs.com** as `@spicefactory/figma-design-pipeli
 - `skill/` — design assistant skill
 - `scripts/install.mjs` — client installer + plugin deployer
 - `scripts/build-server.mjs`, `scripts/build-plugin.mjs` — build scripts (for source installs)
+- `bin/` — entry shims
+- `LICENSE`, `README.md`, `PUBLISHING.md`
+
+## Runtime
+
+- Requires Node 24 LTS or newer (`engines.node: ">=24.0.0"`).
+- Server bundle targets `node24` via esbuild.
 
 ## Before Publishing
 
 ```bash
 npm install
-npm run check
-npm test
+npm run check          # tsc --noEmit
+npm test               # vitest
 npm run build          # builds server + plugin
 npm pack               # verify package contents
 ```

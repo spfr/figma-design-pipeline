@@ -350,7 +350,7 @@ export const setComponentPropertiesActionSchema = z
   .object({
     type: z.literal("set_component_properties"),
     nodeId: z.string().describe("Instance node ID"),
-    properties: z.record(z.union([z.string(), z.boolean()])).describe("Property name -> value map"),
+    properties: z.record(z.string(), z.union([z.string(), z.boolean()])).describe("Property name -> value map"),
   })
   .strict();
 

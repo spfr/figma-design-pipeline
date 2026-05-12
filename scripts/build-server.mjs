@@ -6,7 +6,7 @@ await build({
   bundle: true,
   platform: "node",
   format: "esm",
-  target: "node22",
+  target: "node24",
   banner: {
     js: 'import { createRequire } from "module"; const require = createRequire(import.meta.url);',
   },

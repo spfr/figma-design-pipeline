@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **@spicefactory/figma-design-pipeline** — an AI design assistant MCP server with a high-performance Figma plugin. Provides design intelligence (inspection, auditing, planning, token sync, code generation) plus a WebSocket-based plugin for 30-60x faster Figma writes than `use_figma`.
 
+## Requirements
+
+- **Node.js 24 LTS or newer** (`engines.node: ">=24.0.0"`).
+- Server bundle is built with esbuild target `node24` and TypeScript 6.
+- Internal schema validation uses zod 4.
+
 ## Commands
 
 ```bash
