@@ -1,5 +1,8 @@
 # Installation
 
+> [!WARNING]
+> **Deprecated.** This project is no longer maintained. Use the official [Figma MCP server](https://developers.figma.com/docs/figma-mcp-server/) instead. See the [README](README.md) for migration and uninstall steps.
+
 This guide covers installing `@spicefactory/figma-design-pipeline` for Claude Code, Codex CLI, and Gemini CLI.
 
 ## Prerequisites

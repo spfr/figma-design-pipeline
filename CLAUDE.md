@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+> **DEPRECATED (2026-10-14).** Superseded by the official Figma MCP server. The repo is archived; no further development or releases.
+
 **@spicefactory/figma-design-pipeline** — an AI design assistant MCP server with a high-performance Figma plugin. Provides design intelligence (inspection, auditing, planning, token sync, code generation) plus a WebSocket-based plugin for 30-60x faster Figma writes than `use_figma`.
 
 ## Requirements

@@ -1,5 +1,8 @@
 # Usage
 
+> [!WARNING]
+> **Deprecated.** This project is no longer maintained. Use the official [Figma MCP server](https://developers.figma.com/docs/figma-mcp-server/) instead. See the [README](README.md) for migration and uninstall steps.
+
 This guide shows the most useful workflows. The installed design assistant skill (`figma-design-pipeline`) handles tool routing automatically when you describe what you want — you usually don't need to call tools by name.
 
 For the full installation guide, see [INSTALL.md](INSTALL.md).

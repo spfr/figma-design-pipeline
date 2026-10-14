@@ -2,6 +2,10 @@
 
 All notable changes to SPFR Figma Design Pipeline will be documented in this file.
 
+## Deprecated - 2026-10-14
+
+This project is deprecated. The official [Figma MCP server](https://developers.figma.com/docs/figma-mcp-server/) now covers everything it provided: canvas writes via `use_figma`, design-system search, variables, assets, Code Connect, and web-to-design capture. 0.8.0 is the final release. The README has migration and uninstall steps.
+
 ## [0.8.0] - 2026-05-12
 
 ### Changed (breaking)

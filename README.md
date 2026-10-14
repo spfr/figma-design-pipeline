@@ -1,95 +1,54 @@
-# SPFR Figma Design Pipeline
+# SPFR Figma Design Pipeline — DEPRECATED
 
-AI design assistant for Figma. Analyze websites, create design systems, design pages and dashboards, sync tokens, and generate production code — all from your terminal.
+> [!WARNING]
+> **This project is deprecated and no longer maintained.** Use the official **[Figma MCP server](https://developers.figma.com/docs/figma-mcp-server/)** instead.
+> The npm package `@spicefactory/figma-design-pipeline` is deprecated and this repository is archived.
 
-Works with **Claude Code**, **Codex CLI**, and **Gemini CLI**. Uses the official Figma MCP for full read/write Figma access, plus a high-performance plugin for 30-60x faster writes.
+This project bridged gaps in the early Figma MCP: it had no reliable write path, no design-system search, and no website-to-design capture. The official remote Figma MCP server now covers all of these. Its `use_figma` tool runs Figma Plugin API code directly. One call can create and edit many nodes, so a separate plugin bridge isn't needed anymore.
 
-## What you can do
+## Migrating to the official Figma MCP
 
-```
-"Look at stripe.com and create a design system based on their style"
-"Design me an analytics dashboard with sidebar nav, metrics cards, and charts"
-"Sync the design tokens from Figma to our Tailwind config"
-"Generate React components from this Figma page"
-"Audit https://figma.com/design/ABC/My-File for naming and accessibility issues"
-```
+Set up the official server by following [Figma's MCP guide](https://developers.figma.com/docs/figma-mcp-server/). For Claude Code, install the Figma plugin, which bundles the server and its skills (`figma-use`, `figma-generate-design`, `figma-generate-library`, `figma-design-to-code`, …).
 
-## Quick start
+| This project | Official Figma MCP |
+|---|---|
+| `figma_execute` + plugin bridge (batched writes) | `use_figma` — Plugin API JS, many operations per call ([write to canvas](https://developers.figma.com/docs/figma-mcp-server/write-to-canvas)) |
+| `figma_plugin_status` | Not needed (no local plugin) |
+| `figma_get_tree`, `figma_find_nodes` | `get_metadata`, `use_figma` (read-only queries) |
+| `figma_get_components`, `figma_get_styles` | `search_design_system`, `get_libraries`, `get_variable_defs` |
+| `figma_extract_tokens`, `figma_export_tokens`, `figma_diff_tokens` | `get_variable_defs`, `use_figma` (read variables) |
+| `figma_export_images` | `download_assets`, `get_screenshot` |
+| `figma_audit`, `figma_plan_*` | `get_metadata` / `use_figma` reads; the agent plans and applies changes via `use_figma` |
+| `figma_map_components` | Code Connect (`get_code_connect_map`, `add_code_connect_map`) |
+| `figma_generate_page`, `figma_generate_schema` | `get_design_context` (design → code) |
+| Browser capture → design system | `generate_figma_design` (live web UI → Figma layers) |
+| Create files | `create_new_file` |
 
-```bash
-npx -y -p @spicefactory/figma-design-pipeline spfr-figma-design-pipeline-install --client all
-```
+Full tool list: [Figma MCP tools and prompts](https://developers.figma.com/docs/figma-mcp-server/tools-and-prompts).
 
-Then in Figma Desktop: **Plugins → Development → Import plugin from manifest →** `~/.figma-design-pipeline/plugin/manifest.json`.
+## Uninstalling
 
-Open Claude Code, Codex CLI, or Gemini CLI and start typing. The design assistant skill takes care of routing.
-
-For prerequisites, per-CLI verification, manual config, and troubleshooting, see **[INSTALL.md](INSTALL.md)**.
-
-For tool reference and end-to-end workflows, see **[USAGE.md](USAGE.md)**.
-
-## How it works
-
-```
-AI Agent (Claude Code / Codex / Gemini)
-    │
-    ├─ Official Figma MCP ──→ Read & write Figma (OAuth, zero setup)
-    │
-    ├─ This MCP Server ─────→ Design intelligence (analysis, planning, codegen)
-    │       ↕ WebSocket (ports 4010-4014)
-    │   Figma plugin ─────→ Batch executor (43 action types, 30-60x faster)
-    │
-    └─ Browser tools ───────→ Website capture & analysis
-```
-
-The official Figma MCP handles Figma reads and file creation via OAuth — no personal access token needed. This MCP server adds design intelligence (inspection, auditing, planning, token sync, code generation) plus the plugin bridge for batched writes.
-
-## What's new
-
-**0.8.0** (2026-05-12)
-- **Node 24 LTS required.** Target raised from Node 22 to Node 24 (active LTS as of Oct 2025). `engines.node: ">=24.0.0"` is now declared.
-- **Zod 4** — internal schema validation migrated from zod 3 to zod 4.4. No public API change; one internal `z.record(...)` signature updated for the new two-arg form.
-- **TypeScript 6** — dev toolchain bumped to TS 6.0. `tsc --noEmit` clean.
-- **esbuild 0.28**, **@types/node 24** — toolchain bumps.
-- Bundle: server `dist/index.js` ~1.4 MB (up from ~1.0 MB). The MCP SDK explicitly imports `zod/v3` for back-compat, so both zod majors bundle. Has no effect on tool latency or memory in practice — the server is a local subprocess.
-
-See [CHANGELOG.md](CHANGELOG.md) for prior releases.
-
-## MCP Tools
-
-### Inspect (read-only)
-`figma_get_tree`, `figma_audit`, `figma_extract_tokens`, `figma_find_nodes`, `figma_get_components`, `figma_get_styles`, `figma_diff_tokens`, `figma_export_images`
-
-### Plan (analysis, returns action batches)
-`figma_plan_naming`, `figma_plan_grouping`, `figma_plan_layout`, `figma_plan_components`
-
-### Codegen
-`figma_map_components`, `figma_generate_page`, `figma_generate_schema`, `figma_export_tokens`
-
-### Write (high-performance batch execution)
-`figma_execute`, `figma_plugin_status`
-
-43 action types — frames, text, components, instances, paints, strokes, gradients, effects, auto-layout, constraints, variables, pages. See `figma://actions` MCP resource or [USAGE.md](USAGE.md) for the catalog.
-
-## Documentation
-
-- **[INSTALL.md](INSTALL.md)** — Prerequisites, install steps for Claude/Codex/Gemini, plugin setup, troubleshooting, uninstall.
-- **[USAGE.md](USAGE.md)** — Tool reference, common workflows, tips.
-- **[CHANGELOG.md](CHANGELOG.md)** — Version history.
-- **[CONTRIBUTING.md](CONTRIBUTING.md)** — Development setup, scope, PR checklist.
-- **[PUBLISHING.md](PUBLISHING.md)** — Release process.
-- **[SECURITY.md](SECURITY.md)** — Credential handling, supported versions.
-
-## Development
+Remove everything the installer set up:
 
 ```bash
-npm install
-npm run dev          # tsx src/index.ts
-npm run build        # build server + plugin
-npm run check        # tsc --noEmit
-npm test             # vitest run
-npm run test:watch
+# MCP server registrations
+claude mcp remove figma-design-pipeline --scope user   # Claude Code
+gemini mcp remove figma-design-pipeline                # Gemini CLI (or delete the entry under mcpServers in ~/.gemini/settings.json)
+# Codex CLI: delete the block between "# BEGIN figma-design-pipeline" and "# END figma-design-pipeline" in ~/.codex/config.toml
+
+# Skill symlinks and installed assets
+rm -rf ~/.claude/skills/figma-design-pipeline \
+       ~/.codex/skills/figma-design-pipeline \
+       ~/.agents/skills/figma-design-pipeline \
+       ~/.gemini/skills/figma-design-pipeline \
+       ~/.figma-design-pipeline
 ```
+
+In Figma Desktop, remove the **SPFR Design Pipeline** development plugin from **Plugins → Development → Manage plugins in development**.
+
+## Historical docs
+
+The final release was **0.8.0** (2026-05-12). Earlier documentation is kept for reference: [INSTALL.md](INSTALL.md), [USAGE.md](USAGE.md), [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 

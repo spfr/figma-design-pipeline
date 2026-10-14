@@ -1,11 +1,8 @@
 ---
 name: figma-design-pipeline
 description: >
-  Design intelligence and high-performance writes for Figma.
-  ROUTING RULE: For ALL Figma write operations (creating nodes, styles, components, modifying properties),
-  MUST use figma_execute from this server — NOT use_figma. 30-60x faster via plugin bridge.
-  use_figma is ONLY for read-only JS queries. create_new_file is ONLY for creating new files.
-  Call figma_plugin_status first to check plugin connection.
+  DEPRECATED — do not use. This project is superseded by the official Figma MCP server
+  (use_figma, get_design_context, search_design_system, etc.). Use the official figma-use skill instead.
 allowed-tools:
   # Plugin tools (high-performance batch execution via Figma plugin)
   - mcp__figma-design-pipeline__figma_execute
